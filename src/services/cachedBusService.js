@@ -182,9 +182,16 @@ class CachedBusService {
 		const cacheKey = `bus_schedule_rides_${lineNumber}`;
 		
 		try {
+			console.log(`CachedBusService: getBusScheduleByRides(${lineNumber}) - calling dataCache.get`);
+
 			const data = await dataCache.get(
 				cacheKey,
-				() => busService.getBusScheduleByRides(lineNumber),
+				async () => {
+					console.log(`CachedBusService: Fetching fresh rides data for line ${lineNumber}`);
+					const result = await busService.getBusScheduleByRides(lineNumber);
+					console.log(`CachedBusService: Fresh rides data for line ${lineNumber}:`, result.length, 'rides');
+					return result;
+				},
 				{
 					ttl: 2 * 60 * 1000, // 2 minutes for rides data (more frequent updates)
 					backgroundRefresh: true,
@@ -194,6 +201,7 @@ class CachedBusService {
 			
 			const loadTime = Date.now() - startTime;
 			console.log(`CachedBusService: getBusScheduleByRides(${lineNumber}) completed in ${loadTime}ms`);
+			console.log(`CachedBusService: Returning ${data ? data.length : 0} rides for line ${lineNumber}`);
 			
 			return data || [];
 		} catch (error) {

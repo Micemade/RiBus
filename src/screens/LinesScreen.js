@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
 	View,
 	Text,
@@ -16,6 +16,7 @@ const LinesScreen = ({ navigation }) => {
 	const [lines, setLines] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [favoriteStates, setFavoriteStates] = useState({});
+	const flatListRef = useRef(null);
 
 	useEffect(() => {
 		loadLines();
@@ -24,6 +25,22 @@ const LinesScreen = ({ navigation }) => {
 	useEffect(() => {
 		if (lines.length > 0) {
 			loadFavoriteStates();
+
+			// Check if we need to scroll to a specific item (when returning from details)
+			const selectedItemId = navigation.getSelectedItemId();
+			if (selectedItemId && flatListRef.current) {
+				setTimeout(() => {
+					const itemIndex = lines.findIndex(line => line.id === selectedItemId);
+					if (itemIndex >= 0) {
+						console.log('LinesScreen: Scrolling to item at index', itemIndex);
+						flatListRef.current.scrollToIndex({
+							index: itemIndex,
+							animated: true,
+							viewPosition: 0.5 // Center the item
+						});
+					}
+				}, 100); // Small delay to ensure the list is rendered
+			}
 		}
 	}, [lines]);
 
@@ -81,7 +98,10 @@ const LinesScreen = ({ navigation }) => {
 	};
 
 	const handleLinePress = (line) => {
-		navigation.navigate('LineDetails', { bus: line });
+		navigation.navigate('LineDetails', {
+			bus: line,
+			selectedItemId: line.id
+		});
 	};
 
 	const handleFavoritePress = async (line) => {
@@ -149,11 +169,20 @@ const LinesScreen = ({ navigation }) => {
 				{lines.length} active bus lines
 			</Text>
 			<FlatList
+				ref={flatListRef}
 				data={lines}
 				renderItem={renderLine}
 				keyExtractor={(item) => item.id}
 				contentContainerStyle={styles.listContainer}
 				showsVerticalScrollIndicator={false}
+				onScrollToIndexFailed={(info) => {
+					console.log('LinesScreen: Scroll to index failed:', info);
+					// Fallback: scroll to offset
+					flatListRef.current?.scrollToOffset({
+						offset: info.averageItemLength * info.index,
+						animated: true,
+					});
+				}}
 			/>
 		</View>
 	);

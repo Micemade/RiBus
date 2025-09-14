@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
 	View,
 	Text,
@@ -15,10 +15,33 @@ const MyLinesScreen = ({ navigation }) => {
 	const [savedLines, setSavedLines] = useState([]);
 	const [liveSchedules, setLiveSchedules] = useState({});
 	const [loading, setLoading] = useState(true);
+	const flatListRef = useRef(null);
 
 	useEffect(() => {
 		loadSavedLines();
 	}, []);
+
+	// Add scroll restoration effect
+	useEffect(() => {
+		if (savedLines.length > 0) {
+			const selectedItemId = navigation.getSelectedItemId();
+			if (selectedItemId && flatListRef.current) {
+				setTimeout(() => {
+					const itemIndex = savedLines.findIndex(line =>
+						`${line.lineNumber}-${line.destination}` === selectedItemId
+					);
+					if (itemIndex >= 0) {
+						console.log('MyLinesScreen: Scrolling to item at index', itemIndex);
+						flatListRef.current.scrollToIndex({
+							index: itemIndex,
+							animated: true,
+							viewPosition: 0.5
+						});
+					}
+				}, 100);
+			}
+		}
+	}, [savedLines]);
 
 	const loadSavedLines = async () => {
 		try {
@@ -60,7 +83,10 @@ const MyLinesScreen = ({ navigation }) => {
 	};
 
 	const handleLinePress = (line) => {
-		navigation.navigate('LineDetails', { bus: line });
+		navigation.navigate('LineDetails', {
+			bus: line,
+			selectedItemId: `${line.lineNumber}-${line.destination}`
+		});
 	};
 
 	const handleRemoveLine = (lineNumber, destination) => {
@@ -202,11 +228,19 @@ const MyLinesScreen = ({ navigation }) => {
 			</View>
 			
 			<FlatList
+				ref={flatListRef}
 				data={savedLines}
 				renderItem={renderLine}
 				keyExtractor={(item) => item.id}
 				contentContainerStyle={styles.listContainer}
 				showsVerticalScrollIndicator={false}
+				onScrollToIndexFailed={(info) => {
+					console.log('MyLinesScreen: Scroll to index failed:', info);
+					flatListRef.current?.scrollToOffset({
+						offset: info.averageItemLength * info.index,
+						animated: true,
+					});
+				}}
 			/>
 		</View>
 	);

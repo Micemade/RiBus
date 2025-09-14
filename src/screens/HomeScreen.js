@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
 	View,
 	Text,
@@ -15,10 +15,31 @@ const HomeScreen = ({ navigation }) => {
 	const [buses, setBuses] = useState([]);
 	const [refreshing, setRefreshing] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
+	const flatListRef = useRef(null);
 
 	useEffect(() => {
 		loadBuses();
 	}, []);
+
+	// Add scroll restoration effect
+	useEffect(() => {
+		if (buses.length > 0) {
+			const selectedItemId = navigation.getSelectedItemId();
+			if (selectedItemId && flatListRef.current) {
+				setTimeout(() => {
+					const itemIndex = buses.findIndex(bus => bus.id === selectedItemId);
+					if (itemIndex >= 0) {
+						console.log('HomeScreen: Scrolling to item at index', itemIndex);
+						flatListRef.current.scrollToIndex({
+							index: itemIndex,
+							animated: true,
+							viewPosition: 0.5
+						});
+					}
+				}, 100);
+			}
+		}
+	}, [buses]);
 
 	const loadBuses = async () => {
 		try {
@@ -49,7 +70,10 @@ const HomeScreen = ({ navigation }) => {
 	};
 
 	const handleBusPress = (bus) => {
-		navigation.navigate('LineDetails', { bus });
+		navigation.navigate('LineDetails', {
+			bus,
+			selectedItemId: bus.id
+		});
 	};
 
 	const renderBus = ({ item }) => (
@@ -72,10 +96,18 @@ const HomeScreen = ({ navigation }) => {
 					</Text>
 					{buses.length > 0 ? (
 						<FlatList
+							ref={flatListRef}
 							data={buses}
 							renderItem={renderBus}
 							keyExtractor={(item) => item.id.toString()}
 							showsVerticalScrollIndicator={false}
+							onScrollToIndexFailed={(info) => {
+								console.log('HomeScreen: Scroll to index failed:', info);
+								flatListRef.current?.scrollToOffset({
+									offset: info.averageItemLength * info.index,
+									animated: true,
+								});
+							}}
 						/>
 					) : (
 						<View style={styles.emptyContainer}>

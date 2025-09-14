@@ -16,6 +16,11 @@ export default function App() {
 	const [dataReady, setDataReady] = useState(false);
 	const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
 
+	// Navigation history and scroll position tracking
+	const [navigationHistory, setNavigationHistory] = useState(['Lines']);
+	const [scrollPositions, setScrollPositions] = useState({});
+	const [selectedItemId, setSelectedItemId] = useState(null);
+
 	// Initialize app and preload data
 	useEffect(() => {
 		initializeApp();
@@ -43,19 +48,62 @@ export default function App() {
 
 	const navigation = {
 		navigate: (screen, params) => {
+			console.log('Navigation: Navigating to', screen, 'from', currentScreen);
+
+			// Save scroll position for current screen before navigating
+			if (params?.saveScrollPosition && params?.scrollPosition) {
+				setScrollPositions(prev => ({
+					...prev,
+					[currentScreen]: params.scrollPosition
+				}));
+			}
+
+			// Track navigation history
+			if (screen !== currentScreen) {
+				setNavigationHistory(prev => [...prev, screen]);
+			}
+
+			// Set selected item for scroll restoration
+			if (params?.selectedItemId) {
+				setSelectedItemId(params.selectedItemId);
+			}
+
 			setCurrentScreen(screen);
 			if (params?.bus) {
 				setSelectedBus(params.bus);
 			}
 		},
 		goBack: () => {
-			// Navigate back to the appropriate main screen
-			if (currentScreen === 'LineDetails') {
-				// Determine which main screen to go back to based on previous context
-				// For simplicity, we'll go back to Lines (home), but this could be improved
+			console.log('Navigation: Going back from', currentScreen);
+			console.log('Navigation history:', navigationHistory);
+
+			if (navigationHistory.length > 1) {
+				// Remove current screen from history
+				const newHistory = [...navigationHistory];
+				newHistory.pop(); // Remove current screen
+				const previousScreen = newHistory[newHistory.length - 1];
+
+				console.log('Navigation: Going back to', previousScreen);
+
+				setNavigationHistory(newHistory);
+				setCurrentScreen(previousScreen);
+				setSelectedBus(null);
+
+				// The scroll restoration will be handled by the screen components
+				// when they detect the selectedItemId
+			} else {
+			// Fallback to Lines screen if no history
 				setCurrentScreen('Lines');
 				setSelectedBus(null);
 			}
+		},
+		getScrollPosition: (screen) => {
+			return scrollPositions[screen] || null;
+		},
+		getSelectedItemId: () => {
+			const itemId = selectedItemId;
+			setSelectedItemId(null); // Clear after use
+			return itemId;
 		}
 	};
 
@@ -87,7 +135,8 @@ export default function App() {
 		}
 	};
 
-	const isBottomNavScreen = ['Home', 'Lines', 'Map', 'MyLines'].includes(currentScreen);
+	const isBottomNavScreen = ['Home', 'Lines', 'Map', 'MyLines', 'LineDetails'].includes(currentScreen);
+	const showBackButton = currentScreen === 'LineDetails';
 
 	// Show loading screen during initialization
 	if (isInitializing) {
@@ -104,7 +153,7 @@ export default function App() {
 		<View style={styles.container}>
 			{/* Header */}
 			<View style={styles.header}>
-				{!isBottomNavScreen && (
+				{(!isBottomNavScreen || showBackButton) && (
 					<TouchableOpacity onPress={navigation.goBack} style={styles.backButton}>
 						<ArrowLeftIcon color="#fff" size={18} />
 						<Text style={styles.backButtonText}>Back</Text>

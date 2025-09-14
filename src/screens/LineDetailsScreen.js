@@ -2,22 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
 	View,
 	Text,
-	FlatList,
 	StyleSheet,
 	ScrollView,
 	TouchableOpacity,
 } from 'react-native';
-import ScheduleCard from '../components/ScheduleCard';
 import RidesList from '../components/RidesList';
-import DataAnalyzer from '../components/DataAnalyzer';
 import cachedBusService from '../services/cachedBusService';
 
 const LineDetailsScreen = ({ route, navigation }) => {
 	const { bus } = route.params;
-	const [schedule, setSchedule] = useState([]);
 	const [rides, setRides] = useState([]);
 	const [loading, setLoading] = useState(true);
-	const [viewMode, setViewMode] = useState('rides'); // 'rides', 'schedule', 'debug'
 
 	useEffect(() => {
 		loadSchedule();
@@ -25,39 +20,27 @@ const LineDetailsScreen = ({ route, navigation }) => {
 
 	const loadSchedule = async () => {
 		try {
-			console.log('LineDetailsScreen: Loading schedule for line:', bus.lineNumber);
+			console.log('LineDetailsScreen: Loading rides for line:', bus.lineNumber);
 			
-			// Load both regular schedule and grouped rides
-			const [scheduleData, ridesData] = await Promise.all([
-				cachedBusService.getBusSchedule(bus.lineNumber),
-				cachedBusService.getBusScheduleByRides(bus.lineNumber)
-			]);
-			
-			console.log('LineDetailsScreen: Schedule data received:', scheduleData);
+			// Load rides data
+			const ridesData = await cachedBusService.getBusScheduleByRides(bus.lineNumber);
+
 			console.log('LineDetailsScreen: Rides data received:', ridesData);
-			console.log('LineDetailsScreen: Schedule length:', scheduleData.length);
 			console.log('LineDetailsScreen: Rides count:', ridesData.length);
 			
-			setSchedule(scheduleData);
+			// Log more detailed info if rides are empty
+			if (ridesData.length === 0) {
+				console.warn('LineDetailsScreen: No rides found for line', bus.lineNumber);
+				console.log('LineDetailsScreen: Bus object:', bus);
+			}
+
 			setRides(ridesData);
 			setLoading(false);
 		} catch (error) {
-			console.error('Error loading schedule:', error);
+			console.error('LineDetailsScreen: Error loading schedule:', error);
+			console.error('LineDetailsScreen: Error details:', error.message);
+			console.error('LineDetailsScreen: Error stack:', error.stack);
 			setLoading(false);
-		}
-	};
-
-	const renderSchedule = ({ item }) => (
-		<ScheduleCard schedule={item} />
-	);
-
-	const toggleViewMode = () => {
-		if (viewMode === 'debug') {
-			setViewMode('rides');
-		} else if (viewMode === 'rides') {
-			setViewMode('schedule');
-		} else {
-			setViewMode('debug');
 		}
 	};
 
@@ -71,45 +54,19 @@ const LineDetailsScreen = ({ route, navigation }) => {
 			</View>
 
 			<View style={styles.section}>
-				<View style={styles.sectionHeader}>
-					<Text style={styles.sectionTitle}>Schedule</Text>
-					<TouchableOpacity 
-						style={styles.viewToggle}
-						onPress={toggleViewMode}
-					>
-						<Text style={styles.viewToggleText}>
-							{viewMode === 'debug' ? 'Debug View' : viewMode === 'rides' ? 'Rides View' : 'List View'}
-						</Text>
-					</TouchableOpacity>
-				</View>
+				<Text style={styles.sectionTitle}>Schedule</Text>
 				
 				{loading ? (
 					<Text style={styles.loadingText}>Loading schedule...</Text>
-				) : viewMode === 'debug' ? (
-					<DataAnalyzer lineNumber={bus.lineNumber} />
-				) : viewMode === 'rides' ? (
-					rides.length > 0 ? (
-						<View style={styles.ridesContainer}>
-							<RidesList 
-								rides={rides} 
-								direction={bus.direction || bus.smjerNaziv || bus.directionName || ''} 
-							/>
-						</View>
-					) : (
-						<Text style={styles.noDataText}>No rides available</Text>
-					)
-				) : (
-					schedule.length > 0 ? (
-						<FlatList
-							data={schedule}
-							renderItem={renderSchedule}
-							keyExtractor={(item) => item.id.toString()}
-							showsVerticalScrollIndicator={false}
-							style={styles.scheduleList}
+				) : rides.length > 0 ? (
+					<View style={styles.ridesContainer}>
+						<RidesList
+							rides={rides}
+							direction={bus.direction || bus.smjerNaziv || bus.directionName || ''}
 						/>
-					) : (
-						<Text style={styles.noDataText}>No schedule available</Text>
-					)
+					</View>
+				) : (
+					<Text style={styles.noDataText}>No rides available</Text>
 				)}
 			</View>
 
@@ -160,36 +117,15 @@ const styles = StyleSheet.create({
 		margin: 15,
 		flex: 1,
 	},
-	sectionHeader: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'center',
-		marginBottom: 10,
-	},
 	sectionTitle: {
 		fontSize: 18,
 		fontWeight: 'bold',
 		color: '#333',
-	},
-	viewToggle: {
-		backgroundColor: '#e3f2fd',
-		paddingHorizontal: 12,
-		paddingVertical: 6,
-		borderRadius: 16,
-		borderWidth: 1,
-		borderColor: '#0066cc',
-	},
-	viewToggleText: {
-		color: '#0066cc',
-		fontSize: 12,
-		fontWeight: '600',
+		marginBottom: 10,
 	},
 	ridesContainer: {
 		flex: 1,
 		minHeight: 400,
-	},
-	scheduleList: {
-		maxHeight: 400,
 	},
 	loadingText: {
 		textAlign: 'center',

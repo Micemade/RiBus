@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import cachedBusService from '../services/cachedBusService';
 import favoritesService from '../services/favoritesService';
+import { StarIcon } from '../components/Icons';
 
 const MapScreen = ({ route, navigation }) => {
 	const [buses, setBuses] = useState([]);
@@ -124,7 +125,7 @@ const MapScreen = ({ route, navigation }) => {
 									style={styles.favoriteButton} 
 									onPress={() => handleFavoritePress(bus)}
 								>
-									<Text style={styles.favoriteButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+									<Text style={styles.favoriteButtonText}><StarIcon size={22} color={isFavorite ? "#ffc107" : "#666"} /></Text>
 								</TouchableOpacity>
 							</TouchableOpacity>
 						);
