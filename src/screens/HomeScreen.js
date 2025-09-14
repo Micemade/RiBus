@@ -17,15 +17,12 @@ const HomeScreen = ({ navigation }) => {
 	const [searchQuery, setSearchQuery] = useState('');
 
 	useEffect(() => {
-		console.log('HomeScreen: useEffect triggered');
 		loadBuses();
 	}, []);
 
 	const loadBuses = async () => {
-		console.log('HomeScreen: loadBuses called');
 		try {
 			const data = await busService.getLiveBuses();
-			console.log('HomeScreen: buses loaded', data);
 			setBuses(data);
 		} catch (error) {
 			console.error('Error loading buses:', error);
