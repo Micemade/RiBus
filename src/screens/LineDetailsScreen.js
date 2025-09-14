@@ -10,7 +10,7 @@ import {
 import ScheduleCard from '../components/ScheduleCard';
 import RidesList from '../components/RidesList';
 import DataAnalyzer from '../components/DataAnalyzer';
-import busService from '../services/busService';
+import cachedBusService from '../services/cachedBusService';
 
 const LineDetailsScreen = ({ route, navigation }) => {
 	const { bus } = route.params;
@@ -29,8 +29,8 @@ const LineDetailsScreen = ({ route, navigation }) => {
 			
 			// Load both regular schedule and grouped rides
 			const [scheduleData, ridesData] = await Promise.all([
-				busService.getBusSchedule(bus.lineNumber),
-				busService.getBusScheduleByRides(bus.lineNumber)
+				cachedBusService.getBusSchedule(bus.lineNumber),
+				cachedBusService.getBusScheduleByRides(bus.lineNumber)
 			]);
 			
 			console.log('LineDetailsScreen: Schedule data received:', scheduleData);

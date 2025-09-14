@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ListIcon, StarIcon, BusIcon, MapIcon, ArrowLeftIcon } from './src/components/Icons';
-import PerformanceMonitor from './src/components/PerformanceMonitor';
-import cachedBusService from './src/services/cachedBusService';
 import HomeScreen from './src/screens/HomeScreen';
 import LineDetailsScreen from './src/screens/LineDetailsScreen';
 import MapScreen from './src/screens/MapScreen';
@@ -12,34 +10,6 @@ import MyLinesScreen from './src/screens/MyLinesScreen';
 export default function App() {
 	const [currentScreen, setCurrentScreen] = useState('Lines');
 	const [selectedBus, setSelectedBus] = useState(null);
-	const [isInitializing, setIsInitializing] = useState(true);
-	const [dataReady, setDataReady] = useState(false);
-	const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
-
-	// Initialize app and preload data
-	useEffect(() => {
-		initializeApp();
-	}, []);
-
-	const initializeApp = async () => {
-		try {
-			console.log('App: Starting initialization and data preload...');
-			const startTime = Date.now();
-
-			// Warmup cache with essential data
-			await cachedBusService.warmupCache();
-
-			const loadTime = Date.now() - startTime;
-			console.log(`App: Initialization completed in ${loadTime}ms`);
-
-			setDataReady(true);
-		} catch (error) {
-			console.error('App: Initialization error:', error);
-			setDataReady(true); // Continue without cache to prevent app blocking
-		} finally {
-			setIsInitializing(false);
-		}
-	};
 
 	const navigation = {
 		navigate: (screen, params) => {
@@ -52,8 +22,8 @@ export default function App() {
 			// Navigate back to the appropriate main screen
 			if (currentScreen === 'LineDetails') {
 				// Determine which main screen to go back to based on previous context
-				// For simplicity, we'll go back to Lines (home), but this could be improved
-				setCurrentScreen('Lines');
+				// For simplicity, we'll go back to Home, but this could be improved
+				setCurrentScreen('Home');
 				setSelectedBus(null);
 			}
 		}
@@ -89,40 +59,18 @@ export default function App() {
 
 	const isBottomNavScreen = ['Home', 'Lines', 'Map', 'MyLines'].includes(currentScreen);
 
-	// Show loading screen during initialization
-	if (isInitializing) {
-		return (
-			<View style={styles.loadingContainer}>
-				<ActivityIndicator size="large" color="#0066cc" />
-				<Text style={styles.loadingText}>Loading RiBus...</Text>
-				<Text style={styles.loadingSubtext}>Preparing your data for instant access</Text>
-			</View>
-		);
-	}
-
 	return (
 		<View style={styles.container}>
 			{/* Header */}
 			<View style={styles.header}>
 				{!isBottomNavScreen && (
 					<TouchableOpacity onPress={navigation.goBack} style={styles.backButton}>
-						<ArrowLeftIcon color="#fff" size={18} />
-						<Text style={styles.backButtonText}>Back</Text>
+						<Text style={styles.backButtonText}>← Back</Text>
 					</TouchableOpacity>
 				)}
 				<Text style={styles.headerTitle}>
 					{getHeaderTitle()}
 				</Text>
-
-				{/* Performance Monitor Toggle - Debug only */}
-				{__DEV__ && (
-					<TouchableOpacity
-						onPress={() => setShowPerformanceMonitor(true)}
-						style={styles.debugButton}
-					>
-						<Text style={styles.debugButtonText}>⚡</Text>
-					</TouchableOpacity>
-				)}
 			</View>
 			
 			{/* Content Area */}
@@ -186,12 +134,6 @@ export default function App() {
 					</TouchableOpacity>
 				</View>
 			)}
-
-			{/* Performance Monitor */}
-			<PerformanceMonitor
-				visible={showPerformanceMonitor}
-				onClose={() => setShowPerformanceMonitor(false)}
-			/>
 		</View>
 	);
 }
@@ -202,29 +144,9 @@ const styles = StyleSheet.create({
 		backgroundColor: '#f5f5f5',
 		height: '100vh',
 	},
-	loadingContainer: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		backgroundColor: '#f5f5f5',
-		paddingHorizontal: 40,
-	},
-	loadingText: {
-		fontSize: 18,
-		fontWeight: 'bold',
-		color: '#333',
-		marginTop: 20,
-		textAlign: 'center',
-	},
-	loadingSubtext: {
-		fontSize: 14,
-		color: '#666',
-		marginTop: 8,
-		textAlign: 'center',
-	},
 	header: {
 		backgroundColor: '#0066cc',
-		paddingTop: 10,
+		paddingTop: 20,
 		paddingBottom: 15,
 		paddingHorizontal: 15,
 		flexDirection: 'row',
@@ -232,28 +154,12 @@ const styles = StyleSheet.create({
 		zIndex: 10,
 	},
 	backButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
 		marginRight: 15,
 	},
 	backButtonText: {
 		color: '#fff',
 		fontSize: 16,
 		fontWeight: 'bold',
-		marginLeft: 5,
-	},
-	debugButton: {
-		width: 30,
-		height: 30,
-		borderRadius: 15,
-		backgroundColor: 'rgba(255, 255, 255, 0.2)',
-		justifyContent: 'center',
-		alignItems: 'center',
-		marginLeft: 10,
-	},
-	debugButtonText: {
-		fontSize: 16,
-		color: '#fff',
 	},
 	headerTitle: {
 		color: '#fff',

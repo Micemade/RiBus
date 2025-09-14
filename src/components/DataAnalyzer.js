@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import busService from '../services/busService';
+import cachedBusService from '../services/cachedBusService';
 
 const DataAnalyzer = ({ lineNumber = '2' }) => {
   const [analysis, setAnalysis] = useState(null);
@@ -13,11 +13,11 @@ const DataAnalyzer = ({ lineNumber = '2' }) => {
       console.log('🔍 DataAnalyzer: Starting analysis for line', lineNumber);
       
       // Get raw schedule data
-      const scheduleData = await busService.getBusSchedule(lineNumber);
+      const scheduleData = await cachedBusService.getBusSchedule(lineNumber);
       console.log('DataAnalyzer: Got', scheduleData.length, 'schedule entries');
       
       // Get rides data
-      const ridesData = await busService.getBusScheduleByRides(lineNumber);
+      const ridesData = await cachedBusService.getBusScheduleByRides(lineNumber);
       console.log('DataAnalyzer: Got', ridesData.length, 'rides');
       
       // Analyze the structure

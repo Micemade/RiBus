@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import SearchBar from '../components/SearchBar';
 import BusCard from '../components/BusCard';
-import busService from '../services/busService';
+import cachedBusService from '../services/cachedBusService';
 
 const HomeScreen = ({ navigation }) => {
 	const [buses, setBuses] = useState([]);
@@ -22,7 +22,7 @@ const HomeScreen = ({ navigation }) => {
 
 	const loadBuses = async () => {
 		try {
-			const data = await busService.getLiveBuses();
+			const data = await cachedBusService.getLiveBuses();
 			setBuses(data);
 		} catch (error) {
 			console.error('Error loading buses:', error);

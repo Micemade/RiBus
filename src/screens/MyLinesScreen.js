@@ -8,7 +8,7 @@ import {
 	Alert,
 	ActivityIndicator,
 } from 'react-native';
-import busService from '../services/busService';
+import cachedBusService from '../services/cachedBusService';
 import favoritesService from '../services/favoritesService';
 
 const MyLinesScreen = ({ navigation }) => {
@@ -44,7 +44,7 @@ const MyLinesScreen = ({ navigation }) => {
 		for (const line of lines) {
 			try {
 				console.log('MyLinesScreen: Fetching schedule for line:', line.lineNumber);
-				const schedule = await busService.getBusSchedule(line.lineNumber);
+				const schedule = await cachedBusService.getBusSchedule(line.lineNumber);
 				console.log('MyLinesScreen: Received schedule for line', line.lineNumber, ':', schedule.length, 'entries');
 				console.log('MyLinesScreen: Sample schedule data:', schedule.slice(0, 2));
 				// Get next 3 departures

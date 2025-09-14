@@ -8,7 +8,7 @@ import {
 	ActivityIndicator,
 	Alert,
 } from 'react-native';
-import busService from '../services/busService';
+import cachedBusService from '../services/cachedBusService';
 import favoritesService from '../services/favoritesService';
 import { StarIcon } from '../components/Icons';
 
@@ -44,7 +44,7 @@ const LinesScreen = ({ navigation }) => {
 		try {
 			console.log('LinesScreen: Loading all bus lines');
 			// Get live buses to extract line information
-			const liveBuses = await busService.getLiveBuses();
+			const liveBuses = await cachedBusService.getLiveBuses();
 			
 			// Extract unique lines from live buses
 			const uniqueLines = [];

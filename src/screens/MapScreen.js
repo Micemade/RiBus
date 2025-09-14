@@ -8,7 +8,7 @@ import {
 	TouchableOpacity,
 	Alert,
 } from 'react-native';
-import busService from '../services/busService';
+import cachedBusService from '../services/cachedBusService';
 import favoritesService from '../services/favoritesService';
 
 const MapScreen = ({ route, navigation }) => {
@@ -42,7 +42,7 @@ const MapScreen = ({ route, navigation }) => {
 
 	const loadBuses = async () => {
 		try {
-			const data = await busService.getLiveBuses();
+			const data = await cachedBusService.getLiveBuses();
 			setBuses(data);
 			setLoading(false);
 		} catch (error) {
