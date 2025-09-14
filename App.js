@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { ListIcon, StarIcon, BusIcon, MapIcon, ArrowLeftIcon } from './src/components/Icons';
 import HomeScreen from './src/screens/HomeScreen';
 import LineDetailsScreen from './src/screens/LineDetailsScreen';
 import MapScreen from './src/screens/MapScreen';
@@ -7,7 +8,7 @@ import LinesScreen from './src/screens/LinesScreen';
 import MyLinesScreen from './src/screens/MyLinesScreen';
 
 export default function App() {
-	const [currentScreen, setCurrentScreen] = useState('Home');
+	const [currentScreen, setCurrentScreen] = useState('Lines');
 	const [selectedBus, setSelectedBus] = useState(null);
 
 	const navigation = {
@@ -81,32 +82,15 @@ export default function App() {
 			{isBottomNavScreen && (
 				<View style={styles.bottomNav}>
 					<TouchableOpacity 
-						style={[styles.navItem, currentScreen === 'Home' && styles.navItemActive]}
-						onPress={() => setCurrentScreen('Home')}
-					>
-						<Text style={styles.navIcon}>🚌</Text>
-						<Text style={[styles.navText, currentScreen === 'Home' && styles.navTextActive]}>
-							Live
-						</Text>
-					</TouchableOpacity>
-					
-					<TouchableOpacity 
 						style={[styles.navItem, currentScreen === 'Lines' && styles.navItemActive]}
 						onPress={() => setCurrentScreen('Lines')}
 					>
-						<Text style={styles.navIcon}>📋</Text>
+						<ListIcon
+							size={22}
+							color={currentScreen === 'Lines' ? '#0066cc' : '#666'}
+						/>
 						<Text style={[styles.navText, currentScreen === 'Lines' && styles.navTextActive]}>
 							Lines
-						</Text>
-					</TouchableOpacity>
-					
-					<TouchableOpacity 
-						style={[styles.navItem, currentScreen === 'Map' && styles.navItemActive]}
-						onPress={() => setCurrentScreen('Map')}
-					>
-						<Text style={styles.navIcon}>🗺️</Text>
-						<Text style={[styles.navText, currentScreen === 'Map' && styles.navTextActive]}>
-							Map
 						</Text>
 					</TouchableOpacity>
 					
@@ -114,9 +98,38 @@ export default function App() {
 						style={[styles.navItem, currentScreen === 'MyLines' && styles.navItemActive]}
 						onPress={() => setCurrentScreen('MyLines')}
 					>
-						<Text style={styles.navIcon}>⭐</Text>
+						<StarIcon
+							size={22}
+							color={currentScreen === 'MyLines' ? '#0066cc' : '#666'}
+						/>
 						<Text style={[styles.navText, currentScreen === 'MyLines' && styles.navTextActive]}>
 							My Lines
+						</Text>
+					</TouchableOpacity>
+					
+					<TouchableOpacity 
+						style={[styles.navItem, currentScreen === 'Home' && styles.navItemActive]}
+						onPress={() => setCurrentScreen('Home')}
+					>
+						<BusIcon
+							size={22}
+							color={currentScreen === 'Home' ? '#0066cc' : '#666'}
+						/>
+						<Text style={[styles.navText, currentScreen === 'Home' && styles.navTextActive]}>
+							Live
+						</Text>
+					</TouchableOpacity>
+					
+					<TouchableOpacity 
+						style={[styles.navItem, currentScreen === 'Map' && styles.navItemActive]}
+						onPress={() => setCurrentScreen('Map')}
+					>
+						<MapIcon
+							size={22}
+							color={currentScreen === 'Map' ? '#0066cc' : '#666'}
+						/>
+						<Text style={[styles.navText, currentScreen === 'Map' && styles.navTextActive]}>
+							Map
 						</Text>
 					</TouchableOpacity>
 				</View>
@@ -129,6 +142,7 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: '#f5f5f5',
+		height: '100vh',
 	},
 	header: {
 		backgroundColor: '#0066cc',
@@ -157,7 +171,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	contentWithNav: {
-		paddingBottom: 90, // Space for the fixed bottom navigation
+		paddingBottom: 80, // Space for the fixed bottom navigation
 	},
 	bottomNav: {
 		position: 'absolute',
@@ -189,15 +203,12 @@ const styles = StyleSheet.create({
 	navItemActive: {
 		backgroundColor: '#e3f2fd',
 	},
-	navIcon: {
-		fontSize: 20,
-		marginBottom: 4,
-	},
 	navText: {
 		fontSize: 11,
 		color: '#666',
 		textAlign: 'center',
 		fontWeight: '500',
+		marginTop: 4,
 	},
 	navTextActive: {
 		color: '#0066cc',

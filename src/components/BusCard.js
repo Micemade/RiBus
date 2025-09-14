@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import favoritesService from '../services/favoritesService';
+import { StarIcon } from './Icons';
 
 const BusCard = ({ bus, onPress }) => {
 	const [isFavorite, setIsFavorite] = useState(false);
@@ -53,7 +54,7 @@ const BusCard = ({ bus, onPress }) => {
 				<Text style={styles.busItemTime}>Arrival: {bus.arrivalTime}</Text>
 			</View>
 			<TouchableOpacity style={styles.favoriteButton} onPress={handleFavoritePress}>
-				<Text style={styles.favoriteButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+				<Text style={styles.favoriteButtonText}><StarIcon size={22} color={isFavorite ? "#ffc107" : "#666"} /></Text>
 			</TouchableOpacity>
 		</TouchableOpacity>
 	);

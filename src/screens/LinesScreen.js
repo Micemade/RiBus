@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import busService from '../services/busService';
 import favoritesService from '../services/favoritesService';
+import { StarIcon } from '../components/Icons';
 
 const LinesScreen = ({ navigation }) => {
 	const [lines, setLines] = useState([]);
@@ -127,7 +128,7 @@ const LinesScreen = ({ navigation }) => {
 					style={styles.favoriteButton} 
 					onPress={() => handleFavoritePress(item)}
 				>
-					<Text style={styles.favoriteButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+					<Text style={styles.favoriteButtonText}><StarIcon size={22} color={isFavorite ? "#ffc107" : "#666"} /></Text>
 				</TouchableOpacity>
 			</TouchableOpacity>
 		);
@@ -174,9 +175,9 @@ const styles = StyleSheet.create({
 		color: '#666',
 	},
 	subtitle: {
-		fontSize: 16,
+		fontSize: 12,
 		color: '#666',
-		margin: 15,
+		margin: 10,
 		textAlign: 'center',
 	},
 	listContainer: {
