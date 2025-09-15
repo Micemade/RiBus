@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import cachedBusService from '../services/cachedBusService';
 import favoritesService from '../services/favoritesService';
-import { StarIcon } from '../components/Icons';
+import { StarIcon, MapIcon } from '../components/Icons';
 
 const LinesScreen = ({ navigation }) => {
 	const [lines, setLines] = useState([]);
@@ -120,6 +120,14 @@ const LinesScreen = ({ navigation }) => {
 		}
 	};
 
+	const handleViewOnMapPress = (line) => {
+		console.log('LinesScreen: Navigating to map with line:', line.lineNumber);
+		navigation.navigate('Map', {
+			selectedLine: line.lineNumber,
+			initialLines: [line.lineNumber]
+		});
+	};
+
 	const renderLine = ({ item }) => {
 		const key = `${item.lineNumber}-${item.destination}`;
 		const isFavorite = favoriteStates[key] || false;
@@ -142,12 +150,25 @@ const LinesScreen = ({ navigation }) => {
 					)}
 					<Text style={styles.lineItemStatus}>{item.status} • Tap to view schedule</Text>
 				</View>
-				<TouchableOpacity 
-					style={styles.favoriteButton} 
-					onPress={() => handleFavoritePress(item)}
-				>
-					<Text style={styles.favoriteButtonText}><StarIcon size={22} color={isFavorite ? "#ffc107" : "#666"} /></Text>
-				</TouchableOpacity>
+				<View style={styles.actionButtons}>
+					<TouchableOpacity
+						style={styles.mapButton}
+						onPress={() => handleViewOnMapPress(item)}
+					>
+						<Text style={styles.mapButtonText}>
+							<MapIcon
+								size={18}
+								color='#888'
+							/>
+						</Text>
+					</TouchableOpacity>
+					<TouchableOpacity
+						style={styles.favoriteButton}
+						onPress={() => handleFavoritePress(item)}
+					>
+						<Text style={styles.favoriteButtonText}><StarIcon size={18} color={isFavorite ? "#ffc107" : "#888"} /></Text>
+					</TouchableOpacity>
+				</View>
 			</TouchableOpacity>
 		);
 	};
@@ -276,14 +297,31 @@ const styles = StyleSheet.create({
 		fontSize: 11,
 		color: '#666',
 	},
+	actionButtons: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	mapButton: {
+		width: 36,
+		height: 36,
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderRadius: 20,
+		backgroundColor: '#e3f2fd',
+		borderWidth: 1,
+		borderColor: '#bebfc0ff',
+	},
+	mapButtonText: {
+		fontSize: 16,
+	},
 	favoriteButton: {
-		width: 40,
-		height: 40,
+		width: 36,
+		height: 36,
 		justifyContent: 'center',
 		alignItems: 'center',
 		borderRadius: 20,
 		backgroundColor: '#f8f9fa',
-		marginLeft: 8,
 	},
 	favoriteButtonText: {
 		fontSize: 18,

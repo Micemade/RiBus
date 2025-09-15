@@ -13,6 +13,7 @@ import MyLinesScreen from './src/screens/MyLinesScreen';
 export default function App() {
 	const [currentScreen, setCurrentScreen] = useState('Lines');
 	const [selectedBus, setSelectedBus] = useState(null);
+	const [navigationParams, setNavigationParams] = useState({}); // Store navigation parameters
 	const [isInitializing, setIsInitializing] = useState(true);
 	const [dataReady, setDataReady] = useState(false);
 	const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
@@ -68,8 +69,15 @@ export default function App() {
 			}
 
 			setCurrentScreen(screen);
+
+			// Store all navigation parameters
+			setNavigationParams(params || {});
+
+			// Keep backward compatibility for bus parameter
 			if (params?.bus) {
 				setSelectedBus(params.bus);
+			} else {
+				setSelectedBus(null); // Clear selectedBus if not provided
 			}
 		},
 		goBack: () => {
@@ -83,6 +91,7 @@ export default function App() {
 				setNavigationHistory(newHistory);
 				setCurrentScreen(previousScreen);
 				setSelectedBus(null);
+				setNavigationParams({}); // Clear navigation parameters
 
 				// The scroll restoration will be handled by the screen components
 				// when they detect the selectedItemId
@@ -90,6 +99,7 @@ export default function App() {
 			// Fallback to Lines screen if no history
 				setCurrentScreen('Lines');
 				setSelectedBus(null);
+				setNavigationParams({}); // Clear navigation parameters
 			}
 		},
 		getScrollPosition: (screen) => {
@@ -109,11 +119,11 @@ export default function App() {
 			case 'Lines':
 				return <LinesScreen navigation={navigation} />;
 			case 'Map':
-				return <MapScreen route={{ params: { bus: selectedBus } }} navigation={navigation} />;
+				return <MapScreen route={{ params: { bus: selectedBus, ...navigationParams } }} navigation={navigation} />;
 			case 'MyLines':
 				return <MyLinesScreen navigation={navigation} />;
 			case 'LineDetails':
-				return <LineDetailsScreen route={{ params: { bus: selectedBus } }} navigation={navigation} />;
+				return <LineDetailsScreen route={{ params: { bus: selectedBus, ...navigationParams } }} navigation={navigation} />;
 			default:
 				return <HomeScreen navigation={navigation} />;
 		}
@@ -158,14 +168,6 @@ export default function App() {
 					{getHeaderTitle()}
 				</Text>
 
-				{/* Live Bus Monitor Toggle - Always visible for testing */}
-				<TouchableOpacity
-					onPress={() => setShowLiveBusMonitor(true)}
-					style={styles.liveBusToggle}
-				>
-					<Text style={styles.liveBusToggleText}>🚌 Live</Text>
-				</TouchableOpacity>
-
 				{/* Performance Monitor Toggle - Debug only */}
 				{__DEV__ && (
 					<View style={styles.debugButtons}>
@@ -175,11 +177,13 @@ export default function App() {
 						>
 							<Text style={styles.debugButtonText}>⚡</Text>
 						</TouchableOpacity>
+
+						{/* Live Bus Monitor Toggle - Always visible for testing */}
 						<TouchableOpacity
 							onPress={() => setShowLiveBusMonitor(true)}
-							style={[styles.debugButton, styles.liveBusButton]}
+							style={styles.liveBusToggle}
 						>
-							<Text style={styles.debugButtonText}>🚌</Text>
+							<Text style={styles.liveBusToggleText}>🚌</Text>
 						</TouchableOpacity>
 					</View>
 				)}
@@ -234,7 +238,12 @@ export default function App() {
 					
 					<TouchableOpacity 
 						style={[styles.navItem, currentScreen === 'Map' && styles.navItemActive]}
-						onPress={() => setCurrentScreen('Map')}
+						onPress={() => {
+							// Clear navigation parameters when navigating to Map via bottom nav
+							setNavigationParams({});
+							setSelectedBus(null);
+							setCurrentScreen('Map');
+						}}
 					>
 						<MapIcon
 							size={22}
@@ -321,15 +330,15 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 	},
-	liveBusButton: {
-		backgroundColor: 'rgba(76, 175, 80, 0.3)',
-	},
 	liveBusToggle: {
 		backgroundColor: 'rgba(76, 175, 80, 0.9)',
-		paddingHorizontal: 12,
-		paddingVertical: 6,
+		padding: 2,
+		width: 30,
+		height: 30,
 		borderRadius: 15,
-		marginLeft: 10,
+		justifyContent: 'center',
+		alignItems: 'center',
+		marginLeft: 5,
 	},
 	liveBusToggleText: {
 		color: '#fff',

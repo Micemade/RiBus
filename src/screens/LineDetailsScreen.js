@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import RidesList from '../components/RidesList';
 import cachedBusService from '../services/cachedBusService';
+import { MapIcon } from '../components/Icons';
 
 const LineDetailsScreen = ({ route, navigation }) => {
 	const { bus } = route.params;
@@ -41,10 +42,29 @@ const LineDetailsScreen = ({ route, navigation }) => {
 	return (
 		<ScrollView style={styles.container}>
 			<View style={styles.header}>
-				<Text style={styles.lineNumber}>{bus.lineNumber}</Text>
-				<Text style={styles.destination}>To: {bus.destination}</Text>
-				<Text style={styles.route}>{bus.route}</Text>
-				<Text style={styles.status}>Status: {bus.status}</Text>
+				<View style={styles.headerContent}>
+					<View style={styles.headerInfo}>
+						<Text style={styles.lineNumber}>{bus.lineNumber}</Text>
+						<Text style={styles.destination}>To: {bus.destination}</Text>
+						<Text style={styles.route}>{bus.route}</Text>
+						<Text style={styles.status}>Status: {bus.status}</Text>
+					</View>
+					<TouchableOpacity
+						style={styles.mapButton}
+						onPress={() => navigation.navigate('Map', {
+							bus,
+							selectedLine: bus.lineNumber,
+							initialLines: [bus.lineNumber]
+						})}
+					>
+
+						<MapIcon
+							size={18}
+							color='#888'
+						/>
+
+					</TouchableOpacity>
+				</View>
 			</View>
 
 			<View style={styles.section}>
@@ -63,15 +83,6 @@ const LineDetailsScreen = ({ route, navigation }) => {
 					<Text style={styles.noDataText}>No rides available</Text>
 				)}
 			</View>
-
-			<View style={styles.mapButtonContainer}>
-				<TouchableOpacity
-					style={styles.mapButton}
-					onPress={() => navigation.navigate('Map', { bus })}
-				>
-					<Text style={styles.mapButtonText}>View on Map</Text>
-				</TouchableOpacity>
-			</View>
 		</ScrollView>
 	);
 };
@@ -86,6 +97,14 @@ const styles = StyleSheet.create({
 		padding: 20,
 		borderBottomLeftRadius: 20,
 		borderBottomRightRadius: 20,
+	},
+	headerContent: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'flex-start',
+	},
+	headerInfo: {
+		flex: 1,
 	},
 	lineNumber: {
 		fontSize: 24,
@@ -133,20 +152,19 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		padding: 20,
 	},
-	mapButtonContainer: {
-		alignItems: 'center',
-		marginVertical: 20,
-	},
 	mapButton: {
-		backgroundColor: '#0066cc',
-		paddingVertical: 15,
-		paddingHorizontal: 30,
-		borderRadius: 25,
+		width: 36,
+		height: 36,
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderRadius: 20,
+		backgroundColor: '#e3f2fd',
+		borderWidth: 1,
+		borderColor: '#bebfc0ff',
 	},
 	mapButtonText: {
-		color: 'white',
-		fontWeight: 'bold',
-		fontSize: 16,
+		fontSize: 20,
+		color: '#fff',
 	},
 });
 
