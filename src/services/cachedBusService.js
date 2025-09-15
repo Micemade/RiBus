@@ -58,7 +58,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getLiveBuses completed in ${loadTime}ms`);
 			
 			return data || [];
 		} catch (error) {
@@ -81,7 +80,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getAllLines completed in ${loadTime}ms`);
 			
 			return data || [];
 		} catch (error) {
@@ -107,7 +105,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getLineDetails(${lineId}) completed in ${loadTime}ms`);
 			
 			return data;
 		} catch (error) {
@@ -133,7 +130,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getLiveSchedule(${lineId}) completed in ${loadTime}ms`);
 			
 			return data || [];
 		} catch (error) {
@@ -163,7 +159,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getBusSchedule(${lineNumber}) completed in ${loadTime}ms`);
 			
 			return data || [];
 		} catch (error) {
@@ -182,14 +177,11 @@ class CachedBusService {
 		const cacheKey = `bus_schedule_rides_${lineNumber}`;
 		
 		try {
-			console.log(`CachedBusService: getBusScheduleByRides(${lineNumber}) - calling dataCache.get`);
 
 			const data = await dataCache.get(
 				cacheKey,
 				async () => {
-					console.log(`CachedBusService: Fetching fresh rides data for line ${lineNumber}`);
 					const result = await busService.getBusScheduleByRides(lineNumber);
-					console.log(`CachedBusService: Fresh rides data for line ${lineNumber}:`, result.length, 'rides');
 					return result;
 				},
 				{
@@ -200,8 +192,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getBusScheduleByRides(${lineNumber}) completed in ${loadTime}ms`);
-			console.log(`CachedBusService: Returning ${data ? data.length : 0} rides for line ${lineNumber}`);
 			
 			return data || [];
 		} catch (error) {
@@ -214,7 +204,6 @@ class CachedBusService {
 	 * Force refresh specific data type
 	 */
 	async refreshLiveBuses() {
-		console.log('CachedBusService: Force refreshing live buses');
 		return await dataCache.refresh(
 			this.cacheKeys.liveBuses,
 			() => busService.getLiveBuses(),
@@ -223,7 +212,6 @@ class CachedBusService {
 	}
 	
 	async refreshAllLines() {
-		console.log('CachedBusService: Force refreshing all lines');
 		return await dataCache.refresh(
 			this.cacheKeys.allLines,
 			() => busService.getBusLines(),
@@ -233,8 +221,7 @@ class CachedBusService {
 	
 	async refreshLineDetails(lineId) {
 		if (!lineId) return null;
-		
-		console.log(`CachedBusService: Force refreshing line details for ${lineId}`);
+
 		const cacheKey = `${this.cacheKeys.lineDetails}${lineId}`;
 		return await dataCache.refresh(
 			cacheKey,
@@ -247,7 +234,6 @@ class CachedBusService {
 	 * Preload essential data for instant screen switching
 	 */
 	async preloadEssentialData() {
-		console.log('CachedBusService: Starting essential data preload');
 		const startTime = Date.now();
 		
 		const preloadItems = [
@@ -266,7 +252,6 @@ class CachedBusService {
 		try {
 			await dataCache.preload(preloadItems);
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: Essential data preload completed in ${loadTime}ms`);
 		} catch (error) {
 			console.error('CachedBusService: Essential data preload error:', error);
 		}
@@ -352,7 +337,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getBusLocation(${lineNumber}) completed in ${loadTime}ms`);
 			
 			return data;
 		} catch (error) {
@@ -379,7 +363,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getBusLines completed in ${loadTime}ms`);
 			
 			return data || [];
 		} catch (error) {
@@ -406,7 +389,6 @@ class CachedBusService {
 			);
 			
 			const loadTime = Date.now() - startTime;
-			console.log(`CachedBusService: getStations completed in ${loadTime}ms`);
 			
 			return data || [];
 		} catch (error) {
@@ -433,10 +415,8 @@ class CachedBusService {
 	async clearCache(type = null) {
 		if (type && this.cacheKeys[type]) {
 			await dataCache.clear(this.cacheKeys[type]);
-			console.log(`CachedBusService: Cleared ${type} cache`);
 		} else {
 			await dataCache.clear();
-			console.log('CachedBusService: Cleared all cache');
 		}
 	}
 	
@@ -444,8 +424,6 @@ class CachedBusService {
 	 * Warmup cache with most commonly needed data
 	 */
 	async warmupCache() {
-		console.log('CachedBusService: Starting cache warmup');
-		const startTime = Date.now();
 		
 		try {
 			// Load essential data in parallel
@@ -453,9 +431,7 @@ class CachedBusService {
 				this.getLiveBuses(),
 				this.getAllLines(),
 			]);
-			
-			const warmupTime = Date.now() - startTime;
-			console.log(`CachedBusService: Cache warmup completed in ${warmupTime}ms`);
+
 		} catch (error) {
 			console.error('CachedBusService: Cache warmup error:', error);
 		}

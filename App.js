@@ -28,14 +28,12 @@ export default function App() {
 
 	const initializeApp = async () => {
 		try {
-			console.log('App: Starting initialization and data preload...');
 			const startTime = Date.now();
 
 			// Warmup cache with essential data
 			await cachedBusService.warmupCache();
 
 			const loadTime = Date.now() - startTime;
-			console.log(`App: Initialization completed in ${loadTime}ms`);
 
 			setDataReady(true);
 		} catch (error) {
@@ -48,7 +46,6 @@ export default function App() {
 
 	const navigation = {
 		navigate: (screen, params) => {
-			console.log('Navigation: Navigating to', screen, 'from', currentScreen);
 
 			// Save scroll position for current screen before navigating
 			if (params?.saveScrollPosition && params?.scrollPosition) {
@@ -74,16 +71,12 @@ export default function App() {
 			}
 		},
 		goBack: () => {
-			console.log('Navigation: Going back from', currentScreen);
-			console.log('Navigation history:', navigationHistory);
 
 			if (navigationHistory.length > 1) {
 				// Remove current screen from history
 				const newHistory = [...navigationHistory];
 				newHistory.pop(); // Remove current screen
 				const previousScreen = newHistory[newHistory.length - 1];
-
-				console.log('Navigation: Going back to', previousScreen);
 
 				setNavigationHistory(newHistory);
 				setCurrentScreen(previousScreen);
@@ -330,10 +323,10 @@ const styles = StyleSheet.create({
 		paddingBottom: 12, // Safe area padding
 		elevation: 20, // Maximum elevation for Android
 		zIndex: 9999, // Maximum z-index
-		shadowColor: '#000',
-		shadowOffset: { width:5, height: 0 },
-		shadowOpacity: 0.15,
-		shadowRadius: 8,
+		shadowColor: '#f5f5f5',
+		shadowOffset: { width: 0, height: -30 },
+		shadowOpacity: 1,
+		shadowRadius: 30,
 	},
 	navItem: {
 		flex: 1,

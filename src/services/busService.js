@@ -5,7 +5,6 @@ const busService = {
 	// Get live buses data from Autotrolej API
 	getLiveBuses: async () => {
 		try {
-			console.log('BusService: Starting getLiveBuses...');
 			
 			// Fetch bus lines, live bus locations, and departures data
 			const [linesResponse, busesResponse, departuresResponse] = await Promise.all([
@@ -14,20 +13,9 @@ const busService = {
 				fetch(`${API_BASE_URL}/polasci`)
 			]);
 
-			console.log('BusService: API responses received');
-			console.log('Lines response status:', linesResponse.status);
-			console.log('Buses response status:', busesResponse.status);
-			console.log('Departures response status:', departuresResponse.status);
-
 			const linesData = await linesResponse.json();
 			const busesData = await busesResponse.json();
 			const departuresData = await departuresResponse.json();
-
-			console.log('BusService: Data parsed');
-			console.log('Lines data msg:', linesData.msg);
-			console.log('Buses data msg:', busesData.msg);
-			console.log('Departures data msg:', departuresData.msg);
-			console.log('Number of buses from API:', busesData.res ? busesData.res.length : 0);
 
 			if (linesData.msg !== 'ok' || busesData.msg !== 'ok') {
 				console.error('API response not OK:', { linesData: linesData.msg, busesData: busesData.msg });
@@ -39,21 +27,16 @@ const busService = {
 			Object.values(linesData.res).forEach(line => {
 				linesMap.set(line.id, line);
 			});
-			console.log('BusService: Lines map created with', linesMap.size, 'lines');
 
 			// Create a map of trip IDs to upcoming departures (only if departures data is OK)
 			const tripDepartures = new Map();
 			if (departuresData.msg === 'ok' && departuresData.res) {
-				console.log('BusService: Departures data type:', typeof departuresData.res);
-				console.log('BusService: Departures data is array:', Array.isArray(departuresData.res));
-				console.log('BusService: Departures data structure:', Object.keys(departuresData.res));
 				
 				// Check if res is an array or object
 				const departuresArray = Array.isArray(departuresData.res) 
 					? departuresData.res 
 					: Object.values(departuresData.res);
-				
-				console.log('BusService: Processing', departuresArray.length, 'departures');
+
 				
 				departuresArray.forEach(departure => {
 					if (departure.voznjaId && departure.stanica && departure.polazak) {
@@ -69,7 +52,6 @@ const busService = {
 					}
 				});
 			}
-			console.log('BusService: Trip departures map created with', tripDepartures.size, 'trips');
 
 			// Sort departures by time for each trip
 			tripDepartures.forEach((departures, tripId) => {
@@ -80,7 +62,6 @@ const busService = {
 			const busMap = new Map();
 			
 			// Transform live buses data to match our app structure
-			console.log('BusService: Processing', busesData.res.length, 'buses');
 			busesData.res.forEach((bus, index) => {
 				// Use bus number as unique identifier to avoid duplicates
 				const busKey = `${bus.gbr}-${bus.voznjaId}`;
@@ -94,17 +75,6 @@ const busService = {
 					const busHash = bus.gbr * 31 + (bus.voznjaId % 1000);
 					const lineIndex = Math.abs(busHash) % allLines.length;
 					const line = allLines[lineIndex] || { brojLinije: 'Unknown', naziv: 'Unknown Route' };
-
-					if (index < 3) { // Log first few buses for debugging
-						console.log(`BusService: Processing bus ${index}:`, {
-							busKey,
-							busNumber: bus.gbr,
-							tripId: bus.voznjaId,
-							lineNumber: line.brojLinije,
-							lat: bus.lat,
-							lon: bus.lon
-						});
-					}
 
 					// Get next stop information from departures data
 					const tripDeps = tripDepartures.get(bus.voznjaId) || [];
@@ -151,8 +121,6 @@ const busService = {
 			});
 
 			const liveBuses = Array.from(busMap.values());
-			console.log('BusService: Final live buses count:', liveBuses.length);
-			console.log('BusService: Sample bus data:', liveBuses[0]);
 
 			return liveBuses;
 
@@ -168,9 +136,6 @@ const busService = {
 	// Get bus schedule/departures from Autotrolej API
 	getBusSchedule: async (lineNumber) => {
 		try {
-			console.log('🚌 BusService: Getting schedule for line:', lineNumber);
-			console.log('🚌 BusService: Making API calls to /linije and /polasci endpoints');
-			
 			// Fetch both lines data and departures data
 			const [linesResponse, departuresResponse] = await Promise.all([
 				fetch(`${API_BASE_URL}/linije`),
@@ -179,10 +144,6 @@ const busService = {
 			
 			const linesData = await linesResponse.json();
 			const departuresData = await departuresResponse.json();
-
-			console.log('BusService: Schedule API response status:', departuresResponse.status);
-			console.log('BusService: Schedule data msg:', departuresData.msg);
-			console.log('BusService: Lines data msg:', linesData.msg);
 
 			if (departuresData.msg !== 'ok' || linesData.msg !== 'ok') {
 				throw new Error('API response not OK');
@@ -198,9 +159,6 @@ const busService = {
 			});
 
 			const targetLineIds = lineNumberToIds.get(lineNumber) || [];
-			console.log('BusService: Available line numbers:', Array.from(lineNumberToIds.keys()).slice(0, 10));
-			console.log('BusService: Target line IDs for line', lineNumber, ':', targetLineIds);
-
 			// Convert departures data to array if it's an object
 			let departuresArray;
 			if (Array.isArray(departuresData.res)) {
@@ -217,11 +175,6 @@ const busService = {
 				});
 			}
 
-			console.log('BusService: Total departures available:', departuresArray.length);
-			console.log('BusService: Sample departure structure:', JSON.stringify(departuresArray[0], null, 2));
-			console.log('BusService: Sample departure line IDs:', departuresArray.slice(0, 5).map(d => d.linijaId));
-			console.log('BusService: Sample departure keys:', Object.keys(departuresData.res).slice(0, 5));
-
 			// Try multiple filtering approaches
 			let filteredDepartures = [];
 			
@@ -230,7 +183,6 @@ const busService = {
 				filteredDepartures = departuresArray.filter(departure => 
 					targetLineIds.includes(departure.linijaId)
 				);
-				console.log('BusService: Exact line ID match found:', filteredDepartures.length, 'departures');
 			}
 			
 			// If no exact match, try matching based on departure keys (like '2194-2-2' where 2194 might be line ID)
@@ -242,7 +194,6 @@ const busService = {
 						departure.departureKey.startsWith(lineId.toString())
 					);
 				});
-				console.log('BusService: Departure key match found:', filteredDepartures.length, 'departures');
 			}
 			
 			// If no exact match, try partial string matching with line number in departure key
@@ -250,7 +201,6 @@ const busService = {
 				filteredDepartures = departuresArray.filter(departure => 
 					departure.departureKey && departure.departureKey.includes(lineNumber)
 				);
-				console.log('BusService: Partial departure key match found:', filteredDepartures.length, 'departures');
 			}
 			
 			// If no exact match, try partial string matching with uniqueLinijaId
@@ -258,7 +208,6 @@ const busService = {
 				filteredDepartures = departuresArray.filter(departure => 
 					departure.uniqueLinijaId && departure.uniqueLinijaId.includes(lineNumber)
 				);
-				console.log('BusService: Partial uniqueLinijaId match found:', filteredDepartures.length, 'departures');
 			}
 			
 			// If still no match, try looking at the actual line data in departure
@@ -268,12 +217,10 @@ const busService = {
 					const departureLine = departure.linija || departure.linijaId;
 					return departureLine && departureLine.toString().includes(lineNumber);
 				});
-				console.log('BusService: General line reference match found:', filteredDepartures.length, 'departures');
 			}
 			
 			// As a last resort, show some sample data for debugging
 			if (filteredDepartures.length === 0) {
-				console.log('BusService: No matches found. Taking first 10 departures for debugging...');
 				filteredDepartures = departuresArray.slice(0, 10);
 			}
 
@@ -314,10 +261,6 @@ const busService = {
 				}
 			});
 
-			console.log('BusService: Found', rideGroups.size, 'different rides for line', lineNumber);
-			console.log('BusService: Ride IDs:', Array.from(rideGroups.keys()).slice(0, 10));
-			console.log('BusService: Extracted', allDepartures.length, 'individual departures from', filteredDepartures.length, 'departure groups');
-
 			// Sort all departures by departure time
 			allDepartures.sort((a, b) => {
 				const timeA = a.polazak || '';
@@ -327,17 +270,8 @@ const busService = {
 
 			// Process the extracted departures data
 			const scheduleData = allDepartures.slice(0, 50).map((departure, index) => {
-			// Log first few entries to understand the data structure
-			if (allDepartures.length > 0 && index < 3) {
-				console.log(`BusService: Individual departure ${index} for line ${lineNumber}:`, {
-					polazak: departure.polazak,
-					dolazak: departure.dolazak,
-					stanica: departure.stanica?.naziv,
-					linijaId: departure.linijaId,
-					uniqueLinijaId: departure.uniqueLinijaId,
-					stanicaId: departure.stanicaId
-				});
-			}				// Extract departure time
+
+				// Extract departure time
 				let departureTime = 'N/A';
 				if (departure.polazak) {
 					// Parse ISO datetime format: "2025-09-13T06:53:00"
@@ -367,11 +301,7 @@ const busService = {
 					
 					const rawDescription = departure.stanica.nazivKratki || departure.stanica.naziv || '';
 					stationDescription = rawDescription.toString().replace(/\s+/g, ' ').trim();
-					
-					// Log the station data for debugging
-					if (allDepartures.length > 0 && index < 3) {
-						console.log(`Station ${index} for line ${lineNumber} - Raw:`, departure.stanica.naziv, '-> Cleaned:', stationName);
-					}
+
 				}
 
 				return {
@@ -393,10 +323,6 @@ const busService = {
 				};
 			}); // Process filtered departures for specific line
 
-			// For debugging, let's temporarily show all schedules without time filtering
-			console.log('BusService: Total processed schedules before time filtering:', scheduleData.length);
-			console.log('BusService: Sample schedule times (all):', scheduleData.slice(0, 10).map(s => `${s.time} - ${s.stop}`));
-			
 			// Filter to show only future departures (not past ones) - but more lenient for debugging
 			const now = new Date();
 			const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes since midnight
@@ -416,16 +342,10 @@ const busService = {
 			
 			// If no future schedules, just return the first batch for debugging
 			if (futureSchedules.length === 0) {
-				console.log('BusService: No future schedules found, returning all processed schedules for debugging');
 				futureSchedules = scheduleData;
 			}
 
-			console.log('BusService: Returning', futureSchedules.length, 'schedule entries for line', lineNumber);
-			if (futureSchedules.length > 0) {
-				console.log('BusService: Sample schedule entry:', futureSchedules[0]);
-				console.log('BusService: Sample schedule times:', futureSchedules.slice(0, 5).map(s => `${s.time} - ${s.stop}`));
-				console.log('BusService: Schedule stops for line', lineNumber, ':', futureSchedules.slice(0, 10).map(s => s.stop));
-			} else {
+			if (futureSchedules.length === 0) {
 				// If still no data, return some mock data for debugging
 				console.log('BusService: No schedule data found, returning mock data for debugging');
 				return [
@@ -468,7 +388,6 @@ const busService = {
 	// Get bus schedule grouped by rides (voznjaId) for better organization
 	getBusScheduleByRides: async (lineNumber) => {
 		try {
-			console.log('🚌 BusService: Getting schedule by rides for line:', lineNumber);
 			
 			// Get fresh departure data directly from API
 			const [linesResponse, departuresResponse] = await Promise.all([
@@ -493,7 +412,6 @@ const busService = {
 			});
 
 			const targetLineIds = lineNumberToIds.get(lineNumber) || [];
-			console.log('BusService (Rides): Target line IDs for line', lineNumber, ':', targetLineIds);
 
 			// Convert departures data to array
 			let departuresArray;
@@ -512,7 +430,6 @@ const busService = {
 				filteredDepartures = departuresArray.filter(departure => 
 					targetLineIds.includes(departure.linijaId)
 				);
-				console.log('BusService (Rides): Exact line ID match found:', filteredDepartures.length, 'departure groups');
 			}
 
 			// If no exact match, try matching based on departure keys (format: lineId-direction-variant)
@@ -524,12 +441,10 @@ const busService = {
 						departure.departureKey.startsWith(lineId.toString() + '-')
 					);
 				});
-				console.log('BusService (Rides): Departure key prefix match found:', filteredDepartures.length, 'departure groups');
 			}
 
 			// If still no match, try filtering by line number within the polazakList data
 			if (filteredDepartures.length === 0) {
-				console.log('BusService (Rides): No direct matches found. Searching within polazakList data...');
 				
 				filteredDepartures = departuresArray.filter(departureGroup => {
 					if (!departureGroup.polazakList || !Array.isArray(departureGroup.polazakList)) {
@@ -541,7 +456,6 @@ const busService = {
 						return targetLineIds.includes(polazak.linijaId);
 					});
 				});
-				console.log('BusService (Rides): PolazakList filtering found:', filteredDepartures.length, 'departure groups');
 			}
 
 			// Final filter: within each departure group, only process polazak entries that belong to our line
@@ -557,18 +471,14 @@ const busService = {
 				};
 			}).filter(group => group.polazakList.length > 0);
 
-			console.log('BusService (Rides): Final filtered departure groups:', strictFilteredDepartures.length, 'for line', lineNumber);
-
 			// Process rides from polazakList
 			const rideGroups = new Map();
 			
 			strictFilteredDepartures.forEach(departureGroup => {
 				if (departureGroup.polazakList && Array.isArray(departureGroup.polazakList)) {
-					console.log('BusService (Rides): Processing polazakList with', departureGroup.polazakList.length, 'departures for line', lineNumber);
 					
 					// Verify we have the right line data
 					const lineIds = [...new Set(departureGroup.polazakList.map(p => p.linijaId))];
-					console.log('BusService (Rides): Line IDs in this group:', lineIds, 'Target IDs:', targetLineIds);
 					
 					departureGroup.polazakList.forEach((polazak, index) => {
 						const rideId = polazak.voznjaId;
@@ -668,16 +578,13 @@ const busService = {
 				if (b.firstDeparture === 'N/A') return -1;
 				return a.firstDeparture.localeCompare(b.firstDeparture);
 			});
-			
-			console.log('BusService (Rides): Processed', rides.length, 'rides for line', lineNumber);
-			
+
 			// Verify all rides belong to the correct line
 			const lineVerification = rides.map(ride => ({
 				rideId: ride.rideId,
 				lineId: ride.lineId,
 				isCorrectLine: targetLineIds.includes(ride.lineId)
 			}));
-			console.log('BusService (Rides): Line verification:', lineVerification);
 			
 			// Filter out any rides that don't belong to the target line (safety check)
 			const verifiedRides = rides.filter(ride => targetLineIds.includes(ride.lineId));
@@ -685,18 +592,7 @@ const busService = {
 			if (verifiedRides.length !== rides.length) {
 				console.warn('BusService (Rides): Filtered out', rides.length - verifiedRides.length, 'rides from wrong lines');
 			}
-			
-			// Log sample rides for debugging
-			if (verifiedRides.length > 0) {
-				console.log('BusService (Rides): First verified ride:', {
-					rideId: verifiedRides[0].rideId,
-					lineId: verifiedRides[0].lineId,
-					title: verifiedRides[0].title,
-					departureCount: verifiedRides[0].departures.length,
-					sampleStops: verifiedRides[0].departures.slice(0, 3).map(d => `${d.time} - ${d.stop}`)
-				});
-			}
-			
+
 			return verifiedRides;
 			
 		} catch (error) {
@@ -708,7 +604,6 @@ const busService = {
 	// Analyze API endpoints and data structure for debugging
 	analyzeAPIStructure: async () => {
 		try {
-			console.log('🔍 BusService: Analyzing API structure...');
 			
 			const [linesResponse, busesResponse, departuresResponse] = await Promise.all([
 				fetch(`${API_BASE_URL}/linije`),
@@ -719,59 +614,24 @@ const busService = {
 			const linesData = await linesResponse.json();
 			const busesData = await busesResponse.json();
 			const departuresData = await departuresResponse.json();
-			
-			console.log('📊 API Structure Analysis:');
-			console.log('='.repeat(50));
+
 			
 			// Lines analysis
-			console.log('🚍 LINES (/linije):');
-			console.log('- Total lines:', Object.keys(linesData.res).length);
 			const sampleLine = Object.values(linesData.res)[0];
-			console.log('- Sample line structure:', {
-				id: sampleLine.id,
-				brojLinije: sampleLine.brojLinije,
-				naziv: sampleLine.naziv,
-				smjerId: sampleLine.smjerId,
-				smjerNaziv: sampleLine.smjerNaziv
-			});
+
 			
 			// Buses analysis
-			console.log('\n🚌 BUSES (/autobusi):');
-			console.log('- Total buses:', busesData.res.length);
 			const sampleBus = busesData.res[0];
-			console.log('- Sample bus structure:', {
-				gbr: sampleBus.gbr,
-				voznjaId: sampleBus.voznjaId,
-				lat: sampleBus.lat,
-				lon: sampleBus.lon
-			});
 			
 			// Departures analysis
-			console.log('\n🕐 DEPARTURES (/polasci):');
-			console.log('- Total departure groups:', Object.keys(departuresData.res).length);
 			const sampleKey = Object.keys(departuresData.res)[0];
 			const sampleDeparture = departuresData.res[sampleKey];
-			console.log('- Sample departure key:', sampleKey);
-			console.log('- Sample departure structure:', {
-				id: sampleDeparture.id,
-				brojLinije: sampleDeparture.brojLinije,
-				naziv: sampleDeparture.naziv,
-				polazakListLength: sampleDeparture.polazakList?.length || 0
-			});
 			
 			if (sampleDeparture.polazakList?.length > 0) {
 				const samplePolazak = sampleDeparture.polazakList[0];
-				console.log('- Sample polazak structure:', {
-					voznjaId: samplePolazak.voznjaId,
-					voznjaBusId: samplePolazak.voznjaBusId,
-					stanicaId: samplePolazak.stanicaId,
-					polazak: samplePolazak.polazak,
-					stationName: samplePolazak.stanica?.naziv
-				});
 			}
 			
-			console.log('='.repeat(50));
-			
+			// Summary of findings
 			return {
 				lines: Object.keys(linesData.res).length,
 				buses: busesData.res.length,

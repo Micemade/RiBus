@@ -50,22 +50,17 @@ class FavoritesService {
 	// Remove a line from favorites
 	async removeFavorite(lineNumber, destination) {
 		try {
-			console.log('FavoritesService: removeFavorite called with:', lineNumber, destination);
 			const favorites = await this.getFavorites();
-			console.log('FavoritesService: Current favorites before removal:', favorites);
 			
 			const updatedFavorites = favorites.filter(
 				fav => {
 					const shouldKeep = !(fav.lineNumber === lineNumber && fav.destination === destination);
-					console.log(`FavoritesService: Checking favorite ${fav.lineNumber}-${fav.destination}, shouldKeep: ${shouldKeep}`);
 					return shouldKeep;
 				}
 			);
-			
-			console.log('FavoritesService: Updated favorites after filter:', updatedFavorites);
+
 			
 			await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
-			console.log('FavoritesService: Successfully saved updated favorites to AsyncStorage');
 			
 			return updatedFavorites;
 		} catch (error) {

@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { getRideStatus, getStationStatus, getNextStation, getRideProgress } from '../utils/rideStatusUtils';
 
 const RideAccordion = ({ ride, expanded, onToggle }) => {
-	console.log('RideAccordion: Rendering ride:', ride?.rideId, 'expanded:', expanded);
 	
 	if (!ride) {
 		return (
@@ -247,9 +246,9 @@ const styles = StyleSheet.create({
 	},
 	// Next station info for active rides
 	nextStationText: {
-		fontSize: 12,
+		fontSize: 13,
 		color: '#4caf50',
-		fontWeight: '600',
+		fontWeight: '800',
 		marginTop: 4,
 	},
 	// Progress bar for active rides

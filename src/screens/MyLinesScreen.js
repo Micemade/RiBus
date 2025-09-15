@@ -31,7 +31,6 @@ const MyLinesScreen = ({ navigation }) => {
 						`${line.lineNumber}-${line.destination}` === selectedItemId
 					);
 					if (itemIndex >= 0) {
-						console.log('MyLinesScreen: Scrolling to item at index:', itemIndex);
 						flatListRef.current.scrollToIndex({
 							index: itemIndex,
 							animated: true,
@@ -61,15 +60,11 @@ const MyLinesScreen = ({ navigation }) => {
 	};
 
 	const loadLiveSchedules = async (lines) => {
-		console.log('MyLinesScreen: Loading live schedules for', lines.length, 'lines');
 		const schedules = {};
 		
 		for (const line of lines) {
 			try {
-				console.log('MyLinesScreen: Fetching schedule for line:', line.lineNumber);
 				const schedule = await cachedBusService.getBusSchedule(line.lineNumber);
-				console.log('MyLinesScreen: Received schedule for line', line.lineNumber, ':', schedule.length, 'entries');
-				console.log('MyLinesScreen: Sample schedule data:', schedule.slice(0, 2));
 				// Get next 3 departures
 				schedules[line.lineNumber] = schedule.slice(0, 3);
 			} catch (error) {
@@ -77,8 +72,7 @@ const MyLinesScreen = ({ navigation }) => {
 				schedules[line.lineNumber] = [];
 			}
 		}
-		
-		console.log('MyLinesScreen: Final schedules object:', schedules);
+
 		setLiveSchedules(schedules);
 	};
 
@@ -90,8 +84,6 @@ const MyLinesScreen = ({ navigation }) => {
 	};
 
 	const handleRemoveLine = (lineNumber, destination) => {
-		console.log('MyLinesScreen: handleRemoveLine called with:', lineNumber, destination);
-		console.log('MyLinesScreen: Current favorites count:', favorites.length);
 		
 		Alert.alert(
 			'Remove Line',
@@ -102,12 +94,9 @@ const MyLinesScreen = ({ navigation }) => {
 					text: 'Remove',
 					style: 'destructive',
 					onPress: async () => {
-						console.log('MyLinesScreen: User confirmed removal, calling removeFavorite...');
 						try {
 							const updatedFavorites = await favoritesService.removeFavorite(lineNumber, destination);
-							console.log('MyLinesScreen: removeFavorite successful, updating state with:', updatedFavorites);
 							setFavorites(updatedFavorites);
-							console.log('MyLinesScreen: State updated successfully');
 						} catch (error) {
 							console.error('MyLinesScreen: Error removing favorite:', error);
 							Alert.alert('Error', 'Failed to remove line from favorites');
@@ -130,8 +119,6 @@ const MyLinesScreen = ({ navigation }) => {
 
 	const renderLine = ({ item }) => {
 		const schedule = liveSchedules[item.lineNumber] || [];
-		console.log('MyLinesScreen: Rendering line', item.lineNumber, 'with schedule length:', schedule.length);
-		console.log('MyLinesScreen: Schedule data for', item.lineNumber, ':', schedule);
 		
 		return (
 			<View style={styles.lineCard}>
@@ -235,7 +222,6 @@ const MyLinesScreen = ({ navigation }) => {
 				contentContainerStyle={styles.listContainer}
 				showsVerticalScrollIndicator={false}
 				onScrollToIndexFailed={(info) => {
-					console.log('MyLinesScreen: Scroll to index failed:', info);
 					flatListRef.current?.scrollToOffset({
 						offset: info.averageItemLength * info.index,
 						animated: true,

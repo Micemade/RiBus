@@ -29,7 +29,6 @@ const HomeScreen = ({ navigation }) => {
 				setTimeout(() => {
 					const itemIndex = buses.findIndex(bus => bus.id === selectedItemId);
 					if (itemIndex >= 0) {
-						console.log('HomeScreen: Scrolling to item at index', itemIndex);
 						flatListRef.current.scrollToIndex({
 							index: itemIndex,
 							animated: true,
@@ -102,7 +101,6 @@ const HomeScreen = ({ navigation }) => {
 							keyExtractor={(item) => item.id.toString()}
 							showsVerticalScrollIndicator={false}
 							onScrollToIndexFailed={(info) => {
-								console.log('HomeScreen: Scroll to index failed:', info);
 								flatListRef.current?.scrollToOffset({
 									offset: info.averageItemLength * info.index,
 									animated: true,

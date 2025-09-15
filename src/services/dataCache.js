@@ -43,8 +43,7 @@ class DataCache {
 					this.cacheTimestamps.set(key, timestamp);
 				});
 			}
-			
-			console.log('DataCache: Initialized with', this.cacheTimestamps.size, 'cached items');
+
 			this.initialized = true;
 		} catch (error) {
 			console.error('DataCache: Initialization error:', error);
@@ -150,7 +149,6 @@ class DataCache {
 	
 	async executeFetch(key, fetchFn, options) {
 		try {
-			console.log(`DataCache: Fetching fresh data for ${key}`);
 			const data = await fetchFn();
 			
 			// Update cache
@@ -172,7 +170,6 @@ class DataCache {
 			
 			// Try to return stale data if available
 			if (this.memoryCache.has(key)) {
-				console.log(`DataCache: Returning stale data for ${key}`);
 				return this.memoryCache.get(key);
 			}
 			
@@ -189,7 +186,6 @@ class DataCache {
 		}
 		
 		this.metrics.backgroundRefreshes++;
-		console.log(`DataCache: Starting background refresh for ${key}`);
 		
 		try {
 			await this.fetchAndCache(key, fetchFn, options);

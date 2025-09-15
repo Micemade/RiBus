@@ -9,10 +9,6 @@ const RidesList = ({ rides, direction }) => {
 		setExpandedRide(expandedRide === rideId ? null : rideId);
 	};
 
-	console.log('RidesList: Received direction:', direction, 'Type:', typeof direction);
-	console.log('RidesList: Received rides count:', rides ? rides.length : 0);
-	console.log('RidesList: Sample ride:', rides && rides.length > 0 ? rides[0] : null);
-
 	const formatDirection = (dir) => {
 		if (!dir) return '';
 		// Ensure dir is a string

@@ -20,18 +20,12 @@ const LineDetailsScreen = ({ route, navigation }) => {
 
 	const loadSchedule = async () => {
 		try {
-			console.log('LineDetailsScreen: Loading rides for line:', bus.lineNumber);
-			
 			// Load rides data
 			const ridesData = await cachedBusService.getBusScheduleByRides(bus.lineNumber);
-
-			console.log('LineDetailsScreen: Rides data received:', ridesData);
-			console.log('LineDetailsScreen: Rides count:', ridesData.length);
 			
 			// Log more detailed info if rides are empty
 			if (ridesData.length === 0) {
 				console.warn('LineDetailsScreen: No rides found for line', bus.lineNumber);
-				console.log('LineDetailsScreen: Bus object:', bus);
 			}
 
 			setRides(ridesData);

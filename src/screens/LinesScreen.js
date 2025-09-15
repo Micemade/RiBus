@@ -32,7 +32,6 @@ const LinesScreen = ({ navigation }) => {
 				setTimeout(() => {
 					const itemIndex = lines.findIndex(line => line.id === selectedItemId);
 					if (itemIndex >= 0) {
-						console.log('LinesScreen: Scrolling to item at index', itemIndex);
 						flatListRef.current.scrollToIndex({
 							index: itemIndex,
 							animated: true,
@@ -59,7 +58,6 @@ const LinesScreen = ({ navigation }) => {
 
 	const loadLines = async () => {
 		try {
-			console.log('LinesScreen: Loading all bus lines');
 			// Get live buses to extract line information
 			const liveBuses = await cachedBusService.getLiveBuses();
 			
@@ -176,7 +174,6 @@ const LinesScreen = ({ navigation }) => {
 				contentContainerStyle={styles.listContainer}
 				showsVerticalScrollIndicator={false}
 				onScrollToIndexFailed={(info) => {
-					console.log('LinesScreen: Scroll to index failed:', info);
 					// Fallback: scroll to offset
 					flatListRef.current?.scrollToOffset({
 						offset: info.averageItemLength * info.index,
