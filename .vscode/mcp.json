@@ -1,12 +1,11 @@
 {
 	"servers": {
-		"browser-tools-mcp": {
+		"Browser-Tools-MCP": {
 			"type": "stdio",
-			"command": "npx",
+			"command": "/Users/alen/.nvm/versions/node/v22.18.0/bin/node",
 			"args": [
-				"@agentdeskai/browser-tools-mcp@1.2.0"
-			],
-			"env": {}
+				"/Users/alen/.nvm/versions/node/v22.18.0/lib/node_modules/@agentdeskai/browser-tools-mcp/dist/mcp-server.js"
+			]
 		}
 	},
 	"inputs": []

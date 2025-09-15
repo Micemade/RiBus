@@ -76,7 +76,7 @@ class CachedBusService {
 		try {
 			const data = await dataCache.get(
 				this.cacheKeys.allLines,
-				() => busService.getAllLines(),
+				() => busService.getBusLines(),
 				this.cacheConfig.allLines
 			);
 			
@@ -226,7 +226,7 @@ class CachedBusService {
 		console.log('CachedBusService: Force refreshing all lines');
 		return await dataCache.refresh(
 			this.cacheKeys.allLines,
-			() => busService.getAllLines(),
+			() => busService.getBusLines(),
 			this.cacheConfig.allLines
 		);
 	}
@@ -258,7 +258,7 @@ class CachedBusService {
 			},
 			{
 				key: this.cacheKeys.allLines,
-				fetchFn: () => busService.getAllLines(),
+				fetchFn: () => busService.getBusLines(),
 				options: this.cacheConfig.allLines,
 			},
 		];

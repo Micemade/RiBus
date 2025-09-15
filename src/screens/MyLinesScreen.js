@@ -21,7 +21,7 @@ const MyLinesScreen = ({ navigation }) => {
 		loadSavedLines();
 	}, []);
 
-	// Add scroll restoration effect
+	// Add scroll restoration effect.
 	useEffect(() => {
 		if (savedLines.length > 0) {
 			const selectedItemId = navigation.getSelectedItemId();
@@ -31,7 +31,7 @@ const MyLinesScreen = ({ navigation }) => {
 						`${line.lineNumber}-${line.destination}` === selectedItemId
 					);
 					if (itemIndex >= 0) {
-						console.log('MyLinesScreen: Scrolling to item at index', itemIndex);
+						console.log('MyLinesScreen: Scrolling to item at index:', itemIndex);
 						flatListRef.current.scrollToIndex({
 							index: itemIndex,
 							animated: true,
