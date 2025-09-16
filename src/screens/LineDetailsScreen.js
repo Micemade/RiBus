@@ -8,11 +8,13 @@ import {
 } from 'react-native';
 import RidesList from '../components/RidesList';
 import cachedBusService from '../services/cachedBusService';
+import busService from '../services/busService';
 import { MapIcon } from '../components/Icons';
 
 const LineDetailsScreen = ({ route, navigation }) => {
 	const { bus } = route.params;
 	const [rides, setRides] = useState([]);
+	const [liveBuses, setLiveBuses] = useState([]);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -21,8 +23,16 @@ const LineDetailsScreen = ({ route, navigation }) => {
 
 	const loadSchedule = async () => {
 		try {
-			// Load rides data
-			const ridesData = await cachedBusService.getBusScheduleByRides(bus.lineNumber);
+			// Load rides data and live buses in parallel
+			const [ridesData, liveBusesData] = await Promise.all([
+				cachedBusService.getBusScheduleByRides(bus.lineNumber),
+				busService.getLiveBuses()
+			]);
+
+			// Filter live buses for this specific line
+			const lineBuses = liveBusesData.filter(liveBus =>
+				liveBus.lineNumber === bus.lineNumber
+			);
 			
 			// Log more detailed info if rides are empty
 			if (ridesData.length === 0) {
@@ -30,6 +40,7 @@ const LineDetailsScreen = ({ route, navigation }) => {
 			}
 
 			setRides(ridesData);
+			setLiveBuses(lineBuses);
 			setLoading(false);
 		} catch (error) {
 			console.error('LineDetailsScreen: Error loading schedule:', error);
@@ -37,9 +48,7 @@ const LineDetailsScreen = ({ route, navigation }) => {
 			console.error('LineDetailsScreen: Error stack:', error.stack);
 			setLoading(false);
 		}
-	};
-
-	return (
+	}; return (
 		<ScrollView style={styles.container}>
 			<View style={styles.header}>
 				<View style={styles.headerContent}>
@@ -68,7 +77,19 @@ const LineDetailsScreen = ({ route, navigation }) => {
 			</View>
 
 			<View style={styles.section}>
-				<Text style={styles.sectionTitle}>Schedule</Text>
+				<View style={styles.sectionHeader}>
+					<Text style={styles.sectionTitle}>Schedule</Text>
+					<View style={styles.countersContainer}>
+						<View style={styles.counter}>
+							<Text style={styles.counterValue}>{rides.length}</Text>
+							<Text style={styles.counterLabel}>Scheduled Trips</Text>
+						</View>
+						<View style={styles.counter}>
+							<Text style={styles.counterValue}>{liveBuses.length}</Text>
+							<Text style={styles.counterLabel}>Active Buses</Text>
+						</View>
+					</View>
+				</View>
 				
 				{loading ? (
 					<Text style={styles.loadingText}>Loading schedule...</Text>
@@ -80,7 +101,7 @@ const LineDetailsScreen = ({ route, navigation }) => {
 						/>
 					</View>
 				) : (
-					<Text style={styles.noDataText}>No rides available</Text>
+							<Text style={styles.noDataText}>No scheduled trips available</Text>
 				)}
 			</View>
 		</ScrollView>
@@ -130,11 +151,33 @@ const styles = StyleSheet.create({
 		margin: 15,
 		flex: 1,
 	},
+	sectionHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 10,
+	},
 	sectionTitle: {
 		fontSize: 18,
 		fontWeight: 'bold',
 		color: '#333',
-		marginBottom: 10,
+	},
+	countersContainer: {
+		flexDirection: 'row',
+		gap: 15,
+	},
+	counter: {
+		alignItems: 'center',
+	},
+	counterValue: {
+		fontSize: 20,
+		fontWeight: 'bold',
+		color: '#0066cc',
+	},
+	counterLabel: {
+		fontSize: 10,
+		color: '#666',
+		textAlign: 'center',
 	},
 	ridesContainer: {
 		flex: 1,

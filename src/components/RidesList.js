@@ -19,7 +19,7 @@ const RidesList = ({ rides, direction }) => {
 	if (!rides || rides.length === 0) {
 		return (
 			<View style={styles.emptyContainer}>
-				<Text style={styles.emptyText}>No rides available</Text>
+				<Text style={styles.emptyText}>No scheduled trips available</Text>
 			</View>
 		);
 	}
@@ -32,7 +32,7 @@ const RidesList = ({ rides, direction }) => {
 						{formatDirection(direction)}
 					</Text>
 					<Text style={styles.ridesCount}>
-						{rides.length} ride{rides.length !== 1 ? 's' : ''}
+						{rides.length} scheduled trip{rides.length !== 1 ? 's' : ''}
 					</Text>
 				</View>
 			)}

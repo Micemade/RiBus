@@ -28,16 +28,38 @@ const busService = {
 				linesMap.set(line.id, line);
 			});
 
-			// Create a map of trip IDs to upcoming departures (only if departures data is OK)
+			// Create a map to track trip ID to line mappings from departures data
+			const tripToLineMap = new Map();
 			const tripDepartures = new Map();
+
 			if (departuresData.msg === 'ok' && departuresData.res) {
-				
-				// Check if res is an array or object
 				const departuresArray = Array.isArray(departuresData.res) 
 					? departuresData.res 
 					: Object.values(departuresData.res);
 
-				
+				departuresArray.forEach(departureGroup => {
+					if (departureGroup.polazakList && Array.isArray(departureGroup.polazakList)) {
+						departureGroup.polazakList.forEach(polazak => {
+							if (polazak.voznjaId && polazak.linijaId) {
+								const tripId = polazak.voznjaId;
+								const lineId = polazak.linijaId;
+								// Find the line data for this line ID
+								const lineData = linesMap.get(lineId);
+								if (lineData) {
+									tripToLineMap.set(tripId, {
+										lineId: lineId,
+										lineNumber: lineData.brojLinije,
+										lineName: lineData.naziv,
+										direction: lineData.smjerId,
+										directionName: lineData.smjerNaziv || ''
+									});
+								}
+							}
+						});
+					}
+				});
+
+				// Also build trip departures map for next stop info
 				departuresArray.forEach(departure => {
 					if (departure.voznjaId && departure.stanica && departure.polazak) {
 						const tripId = departure.voznjaId;
@@ -62,19 +84,20 @@ const busService = {
 			const busMap = new Map();
 			
 			// Transform live buses data to match our app structure
+			let busesWithoutTrips = 0;
 			busesData.res.forEach((bus, index) => {
-				// Use bus number as unique identifier to avoid duplicates
+				// Use bus number and trip ID as unique identifier to avoid duplicates
 				const busKey = `${bus.gbr}-${bus.voznjaId}`;
 				
 				if (!busMap.has(busKey)) {
-					// Try to find the actual line this bus belongs to
-					// Since we don't have a direct relation, we'll create a more realistic distribution
-					const allLines = Array.from(linesMap.values());
+					// Get the actual line this bus belongs to using trip ID
+					const tripLineInfo = tripToLineMap.get(bus.voznjaId);
 					
-					// Use a hash-based approach for consistent line assignment
-					const busHash = bus.gbr * 31 + (bus.voznjaId % 1000);
-					const lineIndex = Math.abs(busHash) % allLines.length;
-					const line = allLines[lineIndex] || { brojLinije: 'Unknown', naziv: 'Unknown Route' };
+					// Skip this bus if we can't determine its line
+					if (!tripLineInfo) {
+						busesWithoutTrips++;
+						return;
+					}
 
 					// Get next stop information from departures data
 					const tripDeps = tripDepartures.get(bus.voznjaId) || [];
@@ -104,14 +127,18 @@ const busService = {
 
 					busMap.set(busKey, {
 						id: bus.voznjaBusId || bus.gbr,
-						lineNumber: line.brojLinije,
-						route: line.naziv,
-						destination: line.naziv.split(' - ')[1] || line.naziv,
-						direction: line.smjerId, // Direction ID
-						directionName: line.smjerNaziv || '', // Direction name  
+						lineNumber: tripLineInfo.lineNumber,
+						route: tripLineInfo.lineName,
+						destination: tripLineInfo.lineName.split(' - ')[1] || tripLineInfo.lineName,
+						direction: tripLineInfo.direction, // Direction ID
+						directionName: tripLineInfo.directionName, // Direction name  
 						status: 'Live', // All live buses are considered active
 						nextStop: nextStopName,
 						arrivalTime: arrivalTime,
+						coordinates: {
+							lat: bus.lat,
+							lng: bus.lon
+						},
 						latitude: bus.lat,
 						longitude: bus.lon,
 						busNumber: bus.gbr,
@@ -121,6 +148,11 @@ const busService = {
 			});
 
 			const liveBuses = Array.from(busMap.values());
+
+			// Log summary instead of individual warnings
+			if (busesWithoutTrips > 0) {
+				console.info(`BusService: ${busesWithoutTrips} buses skipped (no active trip assignments). ${liveBuses.length} buses with valid line assignments.`);
+			}
 
 			return liveBuses;
 
