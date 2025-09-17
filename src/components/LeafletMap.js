@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, Platform, StyleSheet } from 'react-native';
 
 // Leaflet map component for web only
@@ -7,16 +7,31 @@ const LeafletMap = ({ buses, selectedLines, onBusSelect }) => {
 	const [leaflet, setLeaflet] = useState(null);
 	const [markers, setMarkers] = useState([]);
 	const [isFirstLoad, setIsFirstLoad] = useState(true);
+	const previousBusesRef = useRef(null);
 
 	useEffect(() => {
 		// Only load Leaflet on web platform
 		if (Platform.OS === 'web') {
 			loadLeaflet();
 		}
+
+		// Cleanup function
+		return () => {
+			if (map) {
+				map.remove();
+				setMap(null);
+				setMarkers([]);
+			}
+		};
 	}, []);
 
 	const loadLeaflet = async () => {
 		try {
+			// Check if already loaded
+			if (leaflet) {
+				return;
+			}
+
 			// Dynamic import for web-only
 			const L = await import('leaflet');
 			await import('leaflet/dist/leaflet.css');
@@ -37,24 +52,35 @@ const LeafletMap = ({ buses, selectedLines, onBusSelect }) => {
 	};
 
 	const initMap = (L) => {
+		// Check if map already exists to prevent multiple initializations
+		if (map) {
+			return;
+		}
+
 		// Center on Rijeka, Croatia
-		const map = L.map('bus-map').setView([45.3271, 14.4422], 13);
+		const newMap = L.map('bus-map').setView([45.3271, 14.4422], 13);
 
 		// Add OpenStreetMap tiles
 		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-		}).addTo(map);
+		}).addTo(newMap);
 
-		setMap(map);
+		setMap(newMap);
 	};
 
 	useEffect(() => {
-		if (map && leaflet && buses.length > 0) {
+		// Check if buses actually changed
+		const busesChanged = !previousBusesRef.current ||
+			JSON.stringify(buses) !== JSON.stringify(previousBusesRef.current);
+
+		if (map && leaflet && busesChanged) {
+			previousBusesRef.current = [...buses];
 			updateBusMarkers();
 		}
 	}, [map, leaflet, buses, selectedLines]);
 
 	const updateBusMarkers = () => {
+
 		// Store current view if map exists
 		let currentView = null;
 		if (map && !isFirstLoad) {
@@ -64,9 +90,24 @@ const LeafletMap = ({ buses, selectedLines, onBusSelect }) => {
 			};
 		}
 		
-		// Clear existing markers
-		markers.forEach(marker => map.removeLayer(marker));
-		
+		// Clear ALL existing markers from the map
+		let removedCount = 0;
+		map.eachLayer((layer) => {
+			// Remove all markers and marker-like layers
+			if (layer instanceof leaflet.Marker || layer.options && layer.options.icon) {
+				map.removeLayer(layer);
+				removedCount++;
+			}
+		});
+
+		// Also clear our tracked markers array
+		setMarkers([]);
+
+		// If no buses to display, just return
+		if (buses.length === 0) {
+			return;
+		}
+
 		const newMarkers = [];
 		
 		// Filter buses by selected lines
@@ -98,17 +139,6 @@ const LeafletMap = ({ buses, selectedLines, onBusSelect }) => {
 				});
 
 				const marker = leaflet.marker([bus.latitude, bus.longitude], { icon: busIcon })
-					.bindPopup(`
-						<div style="min-width: 200px;">
-							<h3 style="margin: 0 0 10px 0; color: #0066cc;">🚌 Line ${bus.lineNumber}</h3>
-							<p style="margin: 5px 0;"><strong>Bus:</strong> #${bus.busNumber}</p>
-							<p style="margin: 5px 0;"><strong>Route:</strong> ${bus.route || 'N/A'}</p>
-							<p style="margin: 5px 0;"><strong>Destination:</strong> ${bus.destination || 'N/A'}</p>
-							<p style="margin: 5px 0;"><strong>Next Stop:</strong> ${bus.nextStop || 'N/A'}</p>
-							<p style="margin: 5px 0;"><strong>Coordinates:</strong><br>
-							${parseFloat(bus.latitude).toFixed(6)}, ${parseFloat(bus.longitude).toFixed(6)}</p>
-						</div>
-					`)
 					.addTo(map);
 
 				// Add click event
@@ -134,9 +164,7 @@ const LeafletMap = ({ buses, selectedLines, onBusSelect }) => {
 			map.fitBounds(group.getBounds().pad(0.1));
 			setIsFirstLoad(false);
 		}
-	};
-
-	const getBusColor = (lineNumber) => {
+	}; const getBusColor = (lineNumber) => {
 		// Assign colors based on line number
 		const colors = [
 			'#e74c3c', '#3498db', '#2ecc71', '#f39c12', 

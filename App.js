@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ListIcon, StarIcon, BusIcon, MapIcon, ArrowLeftIcon } from './src/components/Icons';
 import PerformanceMonitor from './src/components/PerformanceMonitor';
-import LiveBusMonitor from './src/components/LiveBusMonitor';
 import cachedBusService from './src/services/cachedBusService';
 import HomeScreen from './src/screens/HomeScreen';
 import LineDetailsScreen from './src/screens/LineDetailsScreen';
@@ -17,7 +16,6 @@ export default function App() {
 	const [isInitializing, setIsInitializing] = useState(true);
 	const [dataReady, setDataReady] = useState(false);
 	const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
-	const [showLiveBusMonitor, setShowLiveBusMonitor] = useState(false);
 
 	// Navigation history and scroll position tracking
 	const [navigationHistory, setNavigationHistory] = useState(['Lines']);
@@ -177,14 +175,6 @@ export default function App() {
 						>
 							<Text style={styles.debugButtonText}>⚡</Text>
 						</TouchableOpacity>
-
-						{/* Live Bus Monitor Toggle - Always visible for testing */}
-						<TouchableOpacity
-							onPress={() => setShowLiveBusMonitor(true)}
-							style={styles.liveBusToggle}
-						>
-							<Text style={styles.liveBusToggleText}>🚌</Text>
-						</TouchableOpacity>
 					</View>
 				)}
 			</View>
@@ -262,11 +252,6 @@ export default function App() {
 				onClose={() => setShowPerformanceMonitor(false)}
 			/>
 
-			{/* Live Bus Monitor */}
-			<LiveBusMonitor
-				visible={showLiveBusMonitor}
-				onClose={() => setShowLiveBusMonitor(false)}
-			/>
 		</View>
 	);
 }
@@ -329,21 +314,6 @@ const styles = StyleSheet.create({
 	debugButtons: {
 		flexDirection: 'row',
 		alignItems: 'center',
-	},
-	liveBusToggle: {
-		backgroundColor: 'rgba(76, 175, 80, 0.9)',
-		padding: 2,
-		width: 30,
-		height: 30,
-		borderRadius: 15,
-		justifyContent: 'center',
-		alignItems: 'center',
-		marginLeft: 5,
-	},
-	liveBusToggleText: {
-		color: '#fff',
-		fontSize: 12,
-		fontWeight: 'bold',
 	},
 	debugButtonText: {
 		fontSize: 16,

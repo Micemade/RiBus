@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Text, StyleSheet } from 'react-native';
 import RideAccordion from './RideAccordion';
 
-const RidesList = ({ rides, direction }) => {
-	const [expandedRide, setExpandedRide] = useState(null);
+const RidesList = ({ rides, direction, initialExpandedRide }) => {
+	const [expandedRide, setExpandedRide] = useState(initialExpandedRide || null);
+
+	useEffect(() => {
+		if (initialExpandedRide) {
+			setExpandedRide(initialExpandedRide);
+		}
+	}, [initialExpandedRide]);
 
 	const handleToggle = (rideId) => {
 		setExpandedRide(expandedRide === rideId ? null : rideId);

@@ -231,6 +231,13 @@ class CachedBusService {
 	}
 	
 	/**
+	 * Get active buses with caching (alias for getLiveBuses for now)
+	 */
+	async getActiveBuses() {
+		return this.getLiveBuses();
+	}
+
+	/**
 	 * Preload essential data for instant screen switching
 	 */
 	async preloadEssentialData() {
@@ -246,6 +253,12 @@ class CachedBusService {
 				key: this.cacheKeys.allLines,
 				fetchFn: () => busService.getBusLines(),
 				options: this.cacheConfig.allLines,
+			},
+			// Preload active buses (same as live buses for now)
+			{
+				key: 'active_buses',
+				fetchFn: () => busService.getLiveBuses(),
+				options: this.cacheConfig.liveBuses,
 			},
 		];
 		
@@ -424,14 +437,13 @@ class CachedBusService {
 	 * Warmup cache with most commonly needed data
 	 */
 	async warmupCache() {
-		
 		try {
 			// Load essential data in parallel
 			await Promise.allSettled([
 				this.getLiveBuses(),
 				this.getAllLines(),
+				this.getActiveBuses(),
 			]);
-
 		} catch (error) {
 			console.error('CachedBusService: Cache warmup error:', error);
 		}

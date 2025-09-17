@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import busService from '../services/busService';
+import cachedBusService from '../services/cachedBusService';
 import LeafletMap from './LeafletMap';
+import { RefreshIcon } from './Icons';
+import { getNextStation } from '../utils/rideStatusUtils';
 
-const BusMapContainer = ({ onBusSelect, initialLines = [] }) => {
+const BusMapContainer = ({ onBusSelect, onBusUpdate, initialLines = [] }) => {
 	const [buses, setBuses] = useState([]);
 	const [selectedBuses, setSelectedBuses] = useState([]); // Track selected buses
 	const [availableLines, setAvailableLines] = useState([]); // Keep for potential future use
@@ -11,13 +13,15 @@ const BusMapContainer = ({ onBusSelect, initialLines = [] }) => {
 	const [error, setError] = useState(null);
 	const [lastUpdate, setLastUpdate] = useState(null);
 	const [refreshInterval, setRefreshInterval] = useState(null);
+	const [selectedBusRefreshInterval, setSelectedBusRefreshInterval] = useState(null);
 	const [hasInitialSelection, setHasInitialSelection] = useState(false); // Track if initial selection was made
+	const [currentlySelectedBus, setCurrentlySelectedBus] = useState(null); // Track the currently selected bus for updates
 
 	useEffect(() => {
 		fetchBuses();
-		
-		// Set up auto-refresh every 10 seconds
-		const interval = setInterval(fetchBuses, 10000);
+
+		// Set up auto-refresh every 20 seconds
+		const interval = setInterval(fetchBuses, 20000);
 		setRefreshInterval(interval);
 
 		return () => {
@@ -46,12 +50,45 @@ const BusMapContainer = ({ onBusSelect, initialLines = [] }) => {
 		console.log('BusMapContainer: Reset for new navigation with initialLines:', initialLines);
 	}, [JSON.stringify(initialLines)]); // Use JSON.stringify to avoid array reference issues
 
+	// Manage selected bus refresh interval (6 seconds when buses are selected)
+	useEffect(() => {
+		let currentInterval = null;
+
+		if (selectedBuses.length > 0) {
+			// Start 6-second refresh interval for selected buses
+			console.log('BusMapContainer: Starting selected bus refresh interval (6s)');
+			currentInterval = setInterval(fetchSelectedBuses, 6000);
+			setSelectedBusRefreshInterval(currentInterval);
+		} else {
+			// Stop interval when no buses are selected
+			if (selectedBusRefreshInterval) {
+				console.log('BusMapContainer: Stopping selected bus refresh interval');
+				clearInterval(selectedBusRefreshInterval);
+				setSelectedBusRefreshInterval(null);
+			}
+		}
+
+		// Cleanup on unmount or when selectedBuses changes
+		return () => {
+			if (currentInterval) {
+				console.log('BusMapContainer: Clearing selected bus refresh interval on cleanup');
+				clearInterval(currentInterval);
+			}
+			if (selectedBusRefreshInterval && selectedBusRefreshInterval !== currentInterval) {
+				clearInterval(selectedBusRefreshInterval);
+			}
+			setSelectedBusRefreshInterval(null);
+		};
+	}, [selectedBuses.length]); // Only depend on length to avoid unnecessary re-runs
+
 	const fetchBuses = async () => {
 		try {
 			setLoading(true);
 			setError(null);
 
-			const allBuses = await busService.getLiveBuses();
+			let allBuses = [];
+
+			allBuses = await cachedBusService.getActiveBuses();
 			
 			// Preserve selected buses after data refresh by matching them with new data
 			if (selectedBuses.length > 0) {
@@ -103,6 +140,151 @@ const BusMapContainer = ({ onBusSelect, initialLines = [] }) => {
 		}
 	};
 
+	const fetchSelectedBuses = async () => {
+		if (selectedBuses.length === 0) return;
+
+		try {
+
+			// Get unique line numbers from selected buses
+			const uniqueLineNumbers = [...new Set(selectedBuses.map(bus => bus.lineNumber))];
+			console.log(`BusMapContainer: Fetching ${selectedBuses.length} selected buses individually for lines:`, uniqueLineNumbers);
+
+			// Fetch schedule data for all unique lines
+			const schedulePromises = uniqueLineNumbers.map(lineNumber =>
+				cachedBusService.getBusSchedule(lineNumber)
+			);
+			const scheduleDataArray = await Promise.all(schedulePromises);
+
+			// Create a map of line number to schedule data
+			const lineSchedules = new Map();
+			uniqueLineNumbers.forEach((lineNumber, index) => {
+				lineSchedules.set(lineNumber, scheduleDataArray[index] || []);
+			});
+
+			// Fetch each selected bus individually using the /autobus endpoint
+			const updatedBuses = await Promise.all(
+				selectedBuses.map(async (selectedBus) => {
+					try {
+						const response = await fetch(`https://api.autotrolej.hr/api/open/v1/voznired/autobus?gbr=${selectedBus.busNumber}`);
+						if (!response.ok) {
+							console.warn(`BusMapContainer: Failed to fetch bus ${selectedBus.busNumber}:`, response.status);
+							return selectedBus; // Return original data if fetch fails
+						}
+
+						const busData = await response.json();
+						if (busData.msg !== 'ok' || !busData.res) {
+							console.warn(`BusMapContainer: Invalid response for bus ${selectedBus.busNumber}:`, busData.msg);
+							return selectedBus; // Return original data if response is invalid
+						}
+
+						// Update the selected bus with fresh data
+						const freshBus = busData.res;
+						console.log(`BusMapContainer: Individual API response for bus ${selectedBus.busNumber}:`, {
+							originalNextStop: selectedBus.nextStop,
+							freshBusData: freshBus,
+							freshBusType: typeof freshBus,
+							isArray: Array.isArray(freshBus),
+							freshBusKeys: freshBus ? Object.keys(freshBus) : 'N/A',
+							fullResponse: busData
+						});
+
+						// Handle different response formats
+						let nextStop, arrivalTime, latitude, longitude;
+						if (Array.isArray(freshBus) && freshBus.length > 0) {
+							// If it's an array, take the first item
+							const busData = freshBus[0];
+							nextStop = busData.nextStop;
+							arrivalTime = busData.arrivalTime;
+							latitude = busData.latitude || busData.lat;
+							longitude = busData.longitude || busData.lon;
+						} else if (freshBus && typeof freshBus === 'object') {
+							// If it's an object
+							nextStop = freshBus.nextStop;
+							arrivalTime = freshBus.arrivalTime;
+							latitude = freshBus.latitude || freshBus.lat;
+							longitude = freshBus.longitude || freshBus.lon;
+						}
+
+						// Calculate correct next stop from schedule data
+						let calculatedNextStop = nextStop || selectedBus.nextStop;
+						let calculatedArrivalTime = arrivalTime || selectedBus.arrivalTime;
+
+						try {
+							const lineSchedule = lineSchedules.get(selectedBus.lineNumber) || [];
+							console.log(`BusMapContainer: Looking for bus ${selectedBus.busNumber} in schedule for line ${selectedBus.lineNumber}, found ${lineSchedule.length} rides`);
+
+							// Find the ride that matches this bus (by tripId or similar)
+							const matchingRide = lineSchedule.find(ride => {
+								// Try to match by tripId, or by having similar departure times
+								if (ride.tripId === selectedBus.tripId) return true;
+
+								// If no direct match, look for rides that are currently active
+								if (ride.departures && ride.departures.length > 0) {
+									const nextStation = getNextStation(ride);
+									return nextStation !== null; // This ride has an upcoming station
+								}
+								return false;
+							});
+
+							if (matchingRide) {
+								console.log(`BusMapContainer: Found matching ride for bus ${selectedBus.busNumber}:`, matchingRide);
+								const nextStation = getNextStation(matchingRide);
+								if (nextStation) {
+									calculatedNextStop = nextStation.stop;
+									calculatedArrivalTime = nextStation.time;
+									console.log(`BusMapContainer: Calculated next stop for bus ${selectedBus.busNumber}: ${calculatedNextStop} at ${calculatedArrivalTime}`);
+								} else {
+									console.log(`BusMapContainer: No upcoming station found for bus ${selectedBus.busNumber}`);
+								}
+							} else {
+								console.log(`BusMapContainer: No matching ride found for bus ${selectedBus.busNumber} in schedule data`);
+							}
+						} catch (scheduleError) {
+							console.warn(`BusMapContainer: Error calculating next stop from schedule for bus ${selectedBus.busNumber}:`, scheduleError);
+							// Fall back to API data
+						}
+
+						return {
+							...selectedBus,
+							latitude: latitude || selectedBus.latitude,
+							longitude: longitude || selectedBus.longitude,
+							// Use calculated data from schedule, fallback to fresh API data, then original
+							nextStop: calculatedNextStop,
+							arrivalTime: calculatedArrivalTime,
+							// Preserve other properties
+							lineNumber: selectedBus.lineNumber,
+							route: selectedBus.route,
+							destination: selectedBus.destination,
+							tripId: selectedBus.tripId,
+						};
+					} catch (error) {
+						console.warn(`BusMapContainer: Error fetching bus ${selectedBus.busNumber}:`, error);
+						return selectedBus; // Return original data if fetch fails
+					}
+				})
+			);
+
+			// Update selected buses with fresh data
+			setSelectedBuses(updatedBuses);
+			console.log(`BusMapContainer: Updated ${updatedBuses.length} selected buses with fresh data`);
+
+			// Notify parent component about updated bus data
+			if (onBusUpdate && currentlySelectedBus) {
+				const updatedSelectedBus = updatedBuses.find(bus =>
+					bus.busNumber === currentlySelectedBus.busNumber &&
+					bus.tripId === currentlySelectedBus.tripId
+				);
+				if (updatedSelectedBus) {
+					console.log('BusMapContainer: Notifying parent of updated bus data:', updatedSelectedBus);
+					onBusUpdate(updatedSelectedBus);
+				}
+			}
+
+		} catch (error) {
+			console.error('BusMapContainer: Error in fetchSelectedBuses:', error);
+		}
+	};
+
 	const toggleBusSelection = (bus) => {
 		const busKey = `${bus.busNumber}-${bus.tripId}`;
 		setSelectedBuses(prev => {
@@ -127,15 +309,42 @@ const BusMapContainer = ({ onBusSelect, initialLines = [] }) => {
 		);
 	};
 
-	const unselectLine = (lineNumber) => {
-		setSelectedBuses(prev => 
-			prev.filter(bus => bus.lineNumber !== lineNumber)
-		);
-		console.log('BusMapContainer: Unselected line:', lineNumber);
+	const toggleLineSelection = (lineNumber) => {
+		setSelectedBuses(prev => {
+			const busesOnLine = buses.filter(bus => bus.lineNumber === lineNumber);
+			const selectedBusesOnLine = prev.filter(bus => bus.lineNumber === lineNumber);
+
+			if (selectedBusesOnLine.length === busesOnLine.length) {
+				// All buses on this line are selected, so deselect them
+				return prev.filter(bus => bus.lineNumber !== lineNumber);
+			} else {
+				// Not all buses are selected, so select all buses on this line
+				const newSelections = busesOnLine.filter(bus =>
+					!prev.some(selectedBus =>
+						selectedBus.busNumber === bus.busNumber &&
+						selectedBus.tripId === bus.tripId
+					)
+				);
+				return [...prev, ...newSelections];
+			}
+		});
+		console.log('BusMapContainer: Toggled line selection:', lineNumber);
+	}; const isLineFullySelected = (lineNumber) => {
+		const busesOnLine = buses.filter(bus => bus.lineNumber === lineNumber);
+		const selectedBusesOnLine = selectedBuses.filter(bus => bus.lineNumber === lineNumber);
+		return busesOnLine.length > 0 && selectedBusesOnLine.length === busesOnLine.length;
 	};
 
 	const handleBusSelect = (bus) => {
-		console.log('Selected bus:', bus);
+		console.log('BusMapContainer: Bus selected:', {
+			busNumber: bus.busNumber,
+			lineNumber: bus.lineNumber,
+			nextStop: bus.nextStop,
+			arrivalTime: bus.arrivalTime,
+			route: bus.route,
+			destination: bus.destination
+		});
+		setCurrentlySelectedBus(bus); // Track the currently selected bus
 		if (onBusSelect) {
 			onBusSelect(bus);
 		}
@@ -148,36 +357,40 @@ const BusMapContainer = ({ onBusSelect, initialLines = [] }) => {
 	};
 
 	// Filter buses for map display - show selected buses
-	const displayBuses = selectedBuses;
+	const displayBuses = useMemo(() => {
+		return selectedBuses.length === 0 ? [] : buses.filter(bus =>
+			selectedBuses.some(selectedBus =>
+				selectedBus.busNumber === bus.busNumber &&
+				selectedBus.tripId === bus.tripId &&
+				selectedBus.lineNumber === bus.lineNumber
+			)
+		);
+	}, [buses, selectedBuses]);
 
 	return (
 		<View style={styles.container}>
-			{/* Active Buses Section */}
+			{/* Lines Section */}
 			<View style={styles.controlPanel}>
-				<Text style={styles.sectionTitle}>Active Buses ({buses.length})</Text>
-				<ScrollView 
-					horizontal 
-					showsHorizontalScrollIndicator={true}
-					style={styles.busesSelection}
-					contentContainerStyle={styles.busesSelectionContent}
+				<Text style={styles.sectionTitle}>Lines ({availableLines.length})</Text>
+				<ScrollView
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					style={styles.linesSelection}
+					contentContainerStyle={styles.linesSelectionContent}
 				>
-					{buses.map((bus, index) => (
+					{availableLines.map((lineNumber) => (
 						<TouchableOpacity
-							key={`${bus.busNumber}-${bus.tripId}-${index}`}
+							key={lineNumber}
 							style={[
-								styles.busButton,
-								isBusSelected(bus) && styles.busButtonActive
+								styles.lineButton,
+								isLineFullySelected(lineNumber) && styles.lineButtonActive
 							]}
-							onPress={() => toggleBusSelection(bus)}
+							onPress={() => toggleLineSelection(lineNumber)}
 						>
 							<Text style={[
-								styles.busButtonLine,
-								isBusSelected(bus) && styles.busButtonLineActive
-							]}>Line {bus.lineNumber}</Text>
-							<Text style={[
-								styles.busButtonNumber,
-								isBusSelected(bus) && styles.busButtonNumberActive
-							]}>#{bus.busNumber}</Text>
+								styles.lineButtonText,
+								isLineFullySelected(lineNumber) && styles.lineButtonTextActive
+							]}>{lineNumber}</Text>
 						</TouchableOpacity>
 					))}
 				</ScrollView>
@@ -185,20 +398,21 @@ const BusMapContainer = ({ onBusSelect, initialLines = [] }) => {
 				{/* Selected buses on map section */}
 				{selectedBuses.length > 0 && (
 					<View style={styles.selectedBusesSection}>
-						<Text style={styles.selectedBusesTitle}>Selected buses on map</Text>
-						<ScrollView 
-							horizontal 
+						<Text style={styles.selectedBusesTitle}>Selected buses on map ({selectedBuses.length})</Text>
+						<ScrollView
+							horizontal
 							showsHorizontalScrollIndicator={false}
 							style={styles.selectedBusesScroll}
 							contentContainerStyle={styles.selectedBusesContent}
 						>
-							{[...new Set(selectedBuses.map(bus => bus.lineNumber))].map(lineNumber => (
+							{selectedBuses.map((bus, index) => (
 								<TouchableOpacity
-									key={lineNumber}
-									style={styles.selectedLineButton}
-									onPress={() => unselectLine(lineNumber)}
+									key={`${bus.busNumber}-${bus.tripId}-${index}`}
+									style={styles.selectedBusButton}
+									onPress={() => toggleBusSelection(bus)}
 								>
-									<Text style={styles.selectedLineText}>{lineNumber}</Text>
+									<Text style={styles.selectedBusLineText}>Line {bus.lineNumber}</Text>
+									<Text style={styles.selectedBusNumberText}>#{bus.busNumber}</Text>
 								</TouchableOpacity>
 							))}
 						</ScrollView>
@@ -214,7 +428,7 @@ const BusMapContainer = ({ onBusSelect, initialLines = [] }) => {
 						</Text>
 					</View>
 					<TouchableOpacity onPress={fetchBuses} style={styles.refreshButton}>
-						<Text style={styles.refreshText}>🔄</Text>
+						<RefreshIcon size={12} color='#888' style={styles.loaderIconStyle} />
 					</TouchableOpacity>
 				</View>
 
@@ -254,44 +468,6 @@ const styles = StyleSheet.create({
 		color: '#333',
 		marginBottom: 10,
 	},
-	busesSelection: {
-		marginBottom: 15,
-		maxHeight: 60,
-	},
-	busesSelectionContent: {
-		alignItems: 'center',
-		paddingHorizontal: 5,
-	},
-	busButton: {
-		backgroundColor: '#f8f9fa',
-		paddingHorizontal: 10,
-		paddingVertical: 8,
-		borderRadius: 8,
-		marginRight: 8,
-		borderWidth: 1,
-		borderColor: '#ddd',
-		alignItems: 'center',
-		minWidth: 60,
-	},
-	busButtonActive: {
-		backgroundColor: '#0066cc',
-		borderColor: '#0066cc',
-	},
-	busButtonLine: {
-		color: '#0066cc',
-		fontSize: 12,
-		fontWeight: 'bold',
-	},
-	busButtonLineActive: {
-		color: '#fff',
-	},
-	busButtonNumber: {
-		color: '#666',
-		fontSize: 10,
-	},
-	busButtonNumberActive: {
-		color: '#fff',
-	},
 	selectedBusesSection: {
 		marginTop: 15,
 		marginBottom: 10,
@@ -309,20 +485,25 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		paddingHorizontal: 5,
 	},
-	selectedLineButton: {
+	selectedBusButton: {
 		backgroundColor: '#0066cc',
-		padding: 4,
-		borderRadius: 20,
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+		borderRadius: 8,
 		marginRight: 8,
-		width: 30,
-		height: 30,
+		borderWidth: 1,
+		borderColor: '#0066cc',
 		alignItems: 'center',
-		justifyContent: 'center',
+		minWidth: 60,
 	},
-	selectedLineText: {
+	selectedBusLineText: {
 		color: '#fff',
 		fontSize: 12,
 		fontWeight: 'bold',
+	},
+	selectedBusNumberText: {
+		color: '#fff',
+		fontSize: 10,
 	},
 	statusBar: {
 		flexDirection: 'row',
@@ -350,9 +531,17 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	refreshButton: {
-		padding: 8,
-		borderRadius: 4,
-		backgroundColor: '#f0f0f0',
+		width: 24,
+		height: 24,
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderRadius: 20,
+		backgroundColor: '#e3f2fd',
+		borderWidth: 1,
+		borderColor: '#bebfc0ff',
+	},
+	loaderIconStyle: {
+
 	},
 	refreshText: {
 		fontSize: 16,
@@ -374,6 +563,37 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 		overflow: 'hidden',
 		backgroundColor: '#e0f7fa',
+	},
+	linesSelection: {
+		marginBottom: 15,
+		maxHeight: 50,
+	},
+	linesSelectionContent: {
+		alignItems: 'center',
+		paddingHorizontal: 5,
+	},
+	lineButton: {
+		backgroundColor: '#f8f9fa',
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		borderRadius: 8,
+		marginRight: 8,
+		borderWidth: 1,
+		borderColor: '#ddd',
+		alignItems: 'center',
+		minWidth: 50,
+	},
+	lineButtonActive: {
+		backgroundColor: '#0066cc',
+		borderColor: '#0066cc',
+	},
+	lineButtonText: {
+		color: '#0066cc',
+		fontSize: 14,
+		fontWeight: 'bold',
+	},
+	lineButtonTextActive: {
+		color: '#fff',
 	},
 });
 

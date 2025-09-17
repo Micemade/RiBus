@@ -59,8 +59,7 @@ const getStationStatus = (departure, ride) => {
 		if (departure.time.match(/^\d{2}:\d{2}$/)) {
 			const today = new Date();
 			const [hours, minutes] = departure.time.split(':');
-			departureTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 
-									parseInt(hours), parseInt(minutes));
+			departureTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), parseInt(hours), parseInt(minutes));
 		} else if (departure.time.includes('T')) {
 			departureTime = new Date(departure.time);
 		}

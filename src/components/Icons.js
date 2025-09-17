@@ -52,6 +52,11 @@ export const ArrowLeftIcon = (props) => (
 	<Feather name="arrow-left" {...defaultProps} {...props} />
 );
 
+export const RefreshIcon = (props) => (
+	<Feather name="refresh-ccw" {...defaultProps} {...props} />
+);
+
+
 export default {
 	ListIcon,
 	StarIcon,

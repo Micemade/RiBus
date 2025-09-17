@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
 	View,
 	Text,
@@ -8,14 +8,47 @@ import {
 } from 'react-native';
 import RidesList from '../components/RidesList';
 import cachedBusService from '../services/cachedBusService';
-import busService from '../services/busService';
 import { MapIcon } from '../components/Icons';
+import { getRideStatus } from '../utils/rideStatusUtils';
 
 const LineDetailsScreen = ({ route, navigation }) => {
 	const { bus } = route.params;
 	const [rides, setRides] = useState([]);
 	const [liveBuses, setLiveBuses] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [expandedRide, setExpandedRide] = useState(null);
+	const scrollViewRef = useRef(null);
+
+	const findAndScrollToLiveRide = (ridesList) => {
+		if (!ridesList || ridesList.length === 0) return;
+
+		// Find the first active (live) ride
+		const liveRideIndex = ridesList.findIndex(ride => getRideStatus(ride) === 'active');
+
+		if (liveRideIndex !== -1) {
+			const liveRide = ridesList[liveRideIndex];
+
+			// Expand the live ride
+			setExpandedRide(liveRide.rideId);
+
+			// Scroll to the live ride after a short delay to ensure rendering is complete
+			setTimeout(() => {
+				if (scrollViewRef.current) {
+					// Estimate Y position based on ride index (header height + ride item heights)
+					const headerHeight = 120; // Approximate header height
+					const rideItemHeight = 80; // Approximate height per ride item
+					const yPosition = headerHeight + (liveRideIndex * rideItemHeight);
+
+					scrollViewRef.current.scrollTo({
+						y: Math.max(0, yPosition - 100), // Scroll a bit above the ride for better visibility
+						animated: true
+					});
+
+					console.log(`LineDetailsScreen: Scrolled to live ride at index ${liveRideIndex}, ride ID: ${liveRide.rideId}`);
+				}
+			}, 500); // Wait for rendering to complete
+		}
+	};
 
 	useEffect(() => {
 		loadSchedule();
@@ -23,10 +56,10 @@ const LineDetailsScreen = ({ route, navigation }) => {
 
 	const loadSchedule = async () => {
 		try {
-			// Load rides data and live buses in parallel
+			// Load rides data and live buses in parallel using cached service
 			const [ridesData, liveBusesData] = await Promise.all([
 				cachedBusService.getBusScheduleByRides(bus.lineNumber),
-				busService.getLiveBuses()
+				cachedBusService.getActiveBuses()
 			]);
 
 			// Filter live buses for this specific line
@@ -42,6 +75,9 @@ const LineDetailsScreen = ({ route, navigation }) => {
 			setRides(ridesData);
 			setLiveBuses(lineBuses);
 			setLoading(false);
+
+			// Scroll to live ride if one exists
+			findAndScrollToLiveRide(ridesData);
 		} catch (error) {
 			console.error('LineDetailsScreen: Error loading schedule:', error);
 			console.error('LineDetailsScreen: Error details:', error.message);
@@ -49,7 +85,7 @@ const LineDetailsScreen = ({ route, navigation }) => {
 			setLoading(false);
 		}
 	}; return (
-		<ScrollView style={styles.container}>
+		<ScrollView style={styles.container} ref={scrollViewRef}>
 			<View style={styles.header}>
 				<View style={styles.headerContent}>
 					<View style={styles.headerInfo}>
@@ -98,6 +134,7 @@ const LineDetailsScreen = ({ route, navigation }) => {
 						<RidesList
 							rides={rides}
 							direction={bus.direction || bus.smjerNaziv || bus.directionName || ''}
+								initialExpandedRide={expandedRide}
 						/>
 					</View>
 				) : (
